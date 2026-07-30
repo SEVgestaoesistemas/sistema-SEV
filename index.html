@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEV Gestão &amp; Sistemas · Painel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="sidebar-overlay" id="overlay"></div>
+
+<div class="app">
+
+  <!-- ===================================================== SIDEBAR -->
+  <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
+    <div class="brand"><img class="brand-logo" src="assets/sev-logo.jpeg" alt="SEV Gestão &amp; Sistemas"></div>
+
+    <div class="nav-label">Geral</div>
+    <nav class="nav">
+      <a class="nav-item active" href="index.html" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Painel
+      </a>
+      <a class="nav-item" href="financeiro.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.4" fill="currentColor" stroke="none"/></svg>
+        Financeiro
+      </a>
+      <a class="nav-item" href="vendas.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M2.5 3h2.4L7.8 14.6a2 2 0 0 0 2 1.6h6.9a2 2 0 0 0 2-1.5l1.6-6.7H5.4"/></svg>
+        Vendas
+        <span class="nav-badge">320</span>
+      </a>
+      <a class="nav-item" href="estoque.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8L12 3 3 8v8l9 5 9-5V8Z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>
+        Estoque
+      </a>
+      <a class="nav-item" href="relatorios.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h8l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M9 13h6M9 17h6M9 9h2"/></svg>
+        Relatórios
+      </a>
+    </nav>
+
+    <div class="nav-label">Sistema</div>
+    <nav class="nav">
+      <a class="nav-item" href="equipe.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16.5 5.2A3.2 3.2 0 0 1 18 11.2M21.5 20a6 6 0 0 0-4.5-8"/></svg>
+        Equipe
+      </a>
+      <a class="nav-item" href="configuracoes.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.3.9a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.5 2.5a7.6 7.6 0 0 0-2.6 1.5l-2.3-.9-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.3-.9c.8.65 1.66 1.15 2.6 1.5l.5 2.5h4l.5-2.5a7.6 7.6 0 0 0 2.6-1.5l2.3.9 2-3.4-2-1.5Z"/></svg>
+        Configurações
+      </a>
+    </nav>
+
+    <button class="sidebar-footer sidebar-profile" type="button" data-profile-trigger aria-label="Abrir menu do perfil">
+      <div class="avatar-sm" data-profile-avatar>JM</div>
+      <div>
+        <div class="who" data-profile-name>João Marcos</div>
+        <div class="role" data-profile-role>Administrador</div>
+      </div>
+    </button>
+  </aside>
+
+  <!-- ======================================================== MAIN -->
+  <div class="main">
+
+    <header class="topbar">
+      <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menu" aria-controls="sidebar" aria-expanded="false">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <div>
+        <div class="page-title" id="pageTitle">Painel</div>
+        <div class="page-sub" id="pageSub">Visão geral do negócio, hoje</div>
+      </div>
+
+      <form class="search" id="globalSearchForm" role="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.3-3.3"/></svg>
+        <input id="globalSearch" type="search" aria-label="Buscar no sistema" aria-autocomplete="list" aria-controls="globalSearchResults" autocomplete="off" placeholder="Buscar pedido, produto ou cliente…">
+      </form>
+
+      <div class="topbar-actions">
+        <div class="notification-wrap">
+          <button class="icon-btn" id="notificationButton" type="button" aria-label="Notificações" aria-haspopup="dialog" aria-controls="notificationPanel" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 8a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z"/><path d="M10 21h4"/></svg>
+            <span class="dot" id="notificationDot"></span>
+          </button>
+          <section class="notification-panel" id="notificationPanel" aria-label="Notificações" hidden>
+            <div class="notification-head"><div><strong>Notificações</strong><span id="notificationSummary"></span></div><button class="text-button" id="markNotificationsRead" type="button">Marcar todas como lidas</button></div>
+            <ul class="notification-list" id="notificationList"></ul>
+          </section>
+        </div>
+        <button class="icon-btn" type="button" aria-label="Ajuda">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.5 2.5 0 0 1 4.8 1c0 1.6-2.3 1.8-2.3 3.3"/><circle cx="12" cy="17" r="0.6" fill="currentColor"/></svg>
+        </button>
+        <button class="avatar profile-trigger" type="button" data-profile-trigger aria-label="Abrir menu do perfil" data-profile-avatar>JM</button>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <!-- ------------------------------------------------------- KPIs -->
+      <section class="kpi-grid">
+
+        <div class="kpi-card" style="--accent:var(--brand); --accent-tint:var(--brand-tint)">
+          <div class="kpi-top">
+            <div class="kpi-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.2" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <div class="kpi-trend up">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 15l6-6 4 4 6-7"/></svg>
+              12,4%
+            </div>
+          </div>
+          <div class="kpi-label">Receita atual</div>
+          <div class="kpi-value">R$ 128.400</div>
+          <svg class="kpi-spark" viewBox="0 0 200 40" preserveAspectRatio="none">
+            <polyline points="0,32 25,28 50,30 75,20 100,24 125,14 150,18 175,8 200,6" fill="none" stroke="var(--brand)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <div class="kpi-card" style="--accent:var(--success); --accent-tint:var(--success-tint)">
+          <div class="kpi-top">
+            <div class="kpi-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M2.5 3h2.4L7.8 14.6a2 2 0 0 0 2 1.6h6.9a2 2 0 0 0 2-1.5l1.6-6.7H5.4"/></svg>
+            </div>
+            <div class="kpi-trend up">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 15l6-6 4 4 6-7"/></svg>
+              8,1%
+            </div>
+          </div>
+          <div class="kpi-label">Pedidos no mês</div>
+          <div class="kpi-value">320</div>
+          <svg class="kpi-spark" viewBox="0 0 200 40" preserveAspectRatio="none">
+            <polyline points="0,30 25,26 50,28 75,18 100,22 125,12 150,16 175,10 200,4" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <div class="kpi-card" style="--accent:var(--warning); --accent-tint:var(--warning-tint)">
+          <div class="kpi-top">
+            <div class="kpi-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8L12 3 3 8v8l9 5 9-5V8Z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>
+            </div>
+            <div class="kpi-trend down">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 9l6 6 4-4 6 7"/></svg>
+              2,3%
+            </div>
+          </div>
+          <div class="kpi-label">Valor em estoque</div>
+          <div class="kpi-value">R$ 452.900</div>
+          <svg class="kpi-spark" viewBox="0 0 200 40" preserveAspectRatio="none">
+            <polyline points="0,10 25,16 50,12 75,20 100,18 125,26 150,22 175,30 200,28" fill="none" stroke="var(--warning)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <div class="kpi-card" style="--accent:var(--info); --accent-tint:var(--info-tint)">
+          <div class="kpi-top">
+            <div class="kpi-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.6 12.1 12.9 4.4a1.5 1.5 0 0 0-1.1-.4H4.5A1.5 1.5 0 0 0 3 5.5v7.3c0 .4.2.8.4 1.1l7.7 7.7a1.5 1.5 0 0 0 2.1 0l7.4-7.4a1.5 1.5 0 0 0 0-2.1Z"/><circle cx="8.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <div class="kpi-trend up">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 15l6-6 4 4 6-7"/></svg>
+              4,6%
+            </div>
+          </div>
+          <div class="kpi-label">Ticket médio</div>
+          <div class="kpi-value">R$ 401,25</div>
+          <svg class="kpi-spark" viewBox="0 0 200 40" preserveAspectRatio="none">
+            <polyline points="0,26 25,24 50,20 75,22 100,14 125,18 150,10 175,14 200,6" fill="none" stroke="var(--info)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+      </section>
+
+      <!-- --------------------------------------------------- Row: line + donut -->
+      <section class="grid-2">
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Receita × despesas</div>
+              <div class="panel-sub">Últimos 6 meses</div>
+            </div>
+            <div class="legend">
+              <div class="legend-item"><span class="legend-dot" style="background:var(--brand)"></span>Receita</div>
+              <div class="legend-item"><span class="legend-dot" style="background:var(--ink-faint)"></span>Despesas</div>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="revenueChart"></canvas></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Nível de estoque</div>
+              <div class="panel-sub">Por categoria</div>
+            </div>
+          </div>
+          <div class="donut-wrap">
+            <div class="chart-wrap" style="width:100%; max-width:180px; height:180px; flex:none;">
+              <canvas id="stockDonut"></canvas>
+              <div class="donut-center"><div class="num">68%</div><div class="lbl">disponível</div></div>
+            </div>
+            <div class="mini-list">
+              <div class="mini-row"><span class="dot" style="background:var(--brand)"></span><span class="name">Eletrônicos</span><span class="val">42%</span></div>
+              <div class="mini-row"><span class="dot" style="background:var(--success)"></span><span class="name">Vestuário</span><span class="val">26%</span></div>
+              <div class="mini-row"><span class="dot" style="background:var(--warning)"></span><span class="name">Casa &amp; decoração</span><span class="val">19%</span></div>
+              <div class="mini-row"><span class="dot" style="background:var(--border)"></span><span class="name">Outros</span><span class="val">13%</span></div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- --------------------------------------------------- Row: bar + table -->
+      <section class="grid-2 reverse">
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Pedidos por mês</div>
+              <div class="panel-sub">Volume total</div>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="ordersChart"></canvas></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Produtos em estoque</div>
+              <div class="panel-sub">Atualizado hoje às 09:40</div>
+            </div>
+            <div class="tabs">
+              <div class="tab active">Todos</div>
+              <div class="tab">Críticos</div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Produto</th><th>Qtde.</th><th>Status</th><th>Atualizado</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="prod-cell"><span class="prod-swatch" style="background:var(--brand)"></span>Produto C — fone bluetooth</div></td>
+                  <td>150</td>
+                  <td><span class="badge ok">Em estoque</span></td>
+                  <td>23/04/2026</td>
+                </tr>
+                <tr>
+                  <td><div class="prod-cell"><span class="prod-swatch" style="background:var(--success)"></span>Produto B — mochila urbana</div></td>
+                  <td>75</td>
+                  <td><span class="badge ok">Em estoque</span></td>
+                  <td>22/04/2026</td>
+                </tr>
+                <tr>
+                  <td><div class="prod-cell"><span class="prod-swatch" style="background:var(--warning)"></span>Produto A — luminária LED</div></td>
+                  <td>20</td>
+                  <td><span class="badge low">Estoque baixo</span></td>
+                  <td>21/04/2026</td>
+                </tr>
+                <tr>
+                  <td><div class="prod-cell"><span class="prod-swatch" style="background:var(--danger)"></span>Produto D — teclado mecânico</div></td>
+                  <td>0</td>
+                  <td><span class="badge out">Esgotado</span></td>
+                  <td>19/04/2026</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+
+      <div class="footnote">Base gerada para o seu sistema — pronta para conectar à sua API. <strong>SEV Gestão &amp; Sistemas</strong> · componentes em <code>index.html</code>, <code>styles.css</code> e <code>script.js</code>.</div>
+
+    </main>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="script.js"></script>
+<script src="profile.js"></script>
+<script src="notifications.js"></script>
+<script src="search.js"></script>
+<script src="support.js"></script>
+</body>
+</html>

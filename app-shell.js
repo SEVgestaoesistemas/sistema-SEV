@@ -1,0 +1,451 @@
+/* Shared layout for the static ERP module pages. */
+(() => {
+  const root = document.getElementById('appRoot');
+  if (!root) return;
+
+  const pages = {
+    financeiro: {
+      title: 'Financeiro',
+      subtitle: 'Receitas, despesas e fluxo de caixa',
+      content: `
+        <section class="module-hero">
+          <p class="eyebrow">Visão financeira</p>
+          <h1>Controle financeiro</h1>
+          <p>Acompanhe receitas, despesas e o saldo consolidado da operação.</p>
+        </section>
+        <section class="module-grid">
+          <article class="module-card"><span>Saldo atual</span><strong>R$ 61.900</strong><small>Receitas menos despesas no período</small></article>
+          <article class="module-card"><span>Receitas</span><strong>R$ 128.400</strong><small>Últimos 30 dias</small></article>
+          <article class="module-card"><span>Despesas</span><strong>R$ 66.500</strong><small>Últimos 30 dias</small></article>
+        </section>
+        <section class="payment-panel" aria-labelledby="paymentTitle">
+          <div class="settings-panel-head"><div><h2 id="paymentTitle">Vendas por pagamento</h2><p>Distribuição das vendas no período selecionado.</p></div><span class="demo-label">Dados demonstrativos</span></div>
+          <div class="payment-chart-layout">
+            <div class="payment-donut" role="img" aria-label="Vendas por pagamento: Pix 50%, Cartão 42%, Boleto 7% e Outros 1%.">
+              <div class="payment-center"><span id="paymentMethod">Pix</span><strong id="paymentAmount">R$ 3.475</strong><small id="paymentPercent">50% das vendas</small></div>
+            </div>
+            <div class="payment-legend" aria-label="Métodos de pagamento">
+              <button class="payment-legend-item active" type="button" data-payment="pix" aria-pressed="true"><span class="payment-dot pix"></span><span>Pix</span><strong>50%</strong></button>
+              <button class="payment-legend-item" type="button" data-payment="card" aria-pressed="false"><span class="payment-dot card"></span><span>Cartão</span><strong>42%</strong></button>
+              <button class="payment-legend-item" type="button" data-payment="boleto" aria-pressed="false"><span class="payment-dot boleto"></span><span>Boleto</span><strong>7%</strong></button>
+              <button class="payment-legend-item" type="button" data-payment="other" aria-pressed="false"><span class="payment-dot other"></span><span>Outros</span><strong>1%</strong></button>
+            </div>
+          </div>
+        </section>
+        <section class="pending-panel" aria-labelledby="pendingPaymentsTitle">
+          <div class="settings-panel-head"><div><h2 id="pendingPaymentsTitle">Clientes com pagamento pendente</h2><p>Vendas aguardando o recebimento do cliente.</p></div><span class="demo-label">Dados demonstrativos</span></div>
+          <div class="pending-total"><span>Total a receber</span><strong>R$ 8.730</strong><small>3 clientes com pagamento em aberto</small></div>
+          <section class="pending-chart" aria-label="Gráfico de valores pendentes por cliente">
+            <div class="pending-chart-head"><strong>Valores por cliente</strong><span>Valor a receber</span></div>
+            <div class="pending-chart-row"><span>Mariana</span><div class="pending-chart-track"><span class="pending-chart-bar supplier" style="--bar-size:100%"></span></div><strong>R$ 4.250</strong></div>
+            <div class="pending-chart-row"><span>Lucas</span><div class="pending-chart-track"><span class="pending-chart-bar freight" style="--bar-size:40%"></span></div><strong>R$ 1.680</strong></div>
+            <div class="pending-chart-row"><span>Ana</span><div class="pending-chart-track"><span class="pending-chart-bar marketing" style="--bar-size:66%"></span></div><strong>R$ 2.800</strong></div>
+          </section>
+          <div class="table-wrap"><table class="pending-table"><thead><tr><th>Cliente</th><th>Vencimento</th><th>Valor</th><th>Status</th></tr></thead><tbody><tr><td><strong>Mariana Costa</strong><small>Pedido #1042</small></td><td>30/07/2026</td><td>R$ 4.250</td><td><span class="badge out">Atrasado</span></td></tr><tr><td><strong>Lucas Mendes</strong><small>Pedido #1045</small></td><td>31/07/2026</td><td>R$ 1.680</td><td><span class="badge low">A vencer</span></td></tr><tr><td><strong>Ana Ribeiro</strong><small>Pedido #1049</small></td><td>05/08/2026</td><td>R$ 2.800</td><td><span class="badge ok">Agendado</span></td></tr></tbody></table></div>
+        </section>`
+    },
+    vendas: {
+      title: 'Vendas',
+      subtitle: 'Pedidos, clientes e ticket médio',
+      content: `
+        <section class="module-hero"><p class="eyebrow">Operação comercial</p><h1>Vendas</h1><p>Consulte pedidos, desempenho comercial e indicadores de clientes.</p></section>
+        <section class="module-grid"><article class="module-card"><span>Pedidos no mês</span><strong>320</strong><small>8,1% acima do período anterior</small></article><article class="module-card"><span>Ticket médio</span><strong>R$ 401,25</strong><small>Por pedido concluído</small></article><article class="module-card"><span>Status</span><strong>Em preparação</strong><small>Lista de pedidos será conectada à API</small></article></section>`
+    },
+    estoque: {
+      title: 'Estoque',
+      subtitle: 'Produtos, quantidades e alertas',
+      content: `
+        <section class="module-hero"><p class="eyebrow">Catálogo e inventário</p><h1>Estoque</h1><p>Cadastre produtos e acompanhe níveis mínimos para reposição.</p></section>
+        <section class="module-grid stock-summary-grid"><article class="module-card"><span>Produtos cadastrados</span><strong id="stockProductCount">0</strong><small>Itens diferentes no catálogo</small></article><article class="module-card"><span>Estoque baixo</span><strong id="stockLowCount">0</strong><small>Produtos que exigem reposição</small></article><article class="module-card"><span>Esgotados</span><strong id="stockOutCount">0</strong><small>Produtos sem unidades disponíveis</small></article></section>
+        <section class="stock-panel" aria-labelledby="addProductTitle"><div class="settings-panel-head"><div><h2 id="addProductTitle">Cadastrar produto</h2><p>O cadastro é salvo somente neste navegador até a integração com a API.</p></div></div><form class="stock-form" id="stockForm"><label class="field"><span>Nome do produto</span><input name="productName" type="text" minlength="3" maxlength="100" required></label><label class="field"><span>Quantidade atual</span><input name="productQuantity" type="number" min="0" max="1000000" step="1" required inputmode="numeric"></label><label class="field"><span>Estoque mínimo</span><input name="productMinimum" type="number" min="0" max="1000000" step="1" required inputmode="numeric"></label><button class="primary-button" type="submit">Adicionar produto</button></form><p class="stock-status" id="stockStatus" role="status" aria-live="polite"></p></section>
+        <section class="stock-panel" aria-labelledby="catalogTitle"><div class="stock-toolbar"><div><h2 id="catalogTitle">Produtos cadastrados</h2><p id="stockListSummary">0 produtos no catálogo</p></div><div class="stock-toolbar-controls"><label class="stock-search"><span class="sr-only">Buscar produto</span><input id="stockSearch" type="search" placeholder="Buscar produto"></label><div class="tabs" aria-label="Filtros de estoque"><button class="tab active" type="button" data-stock-filter="all" aria-pressed="true">Todos</button><button class="tab" type="button" data-stock-filter="critical" aria-pressed="false">Críticos</button></div></div></div><div class="table-wrap"><table class="stock-table"><thead><tr><th>Produto</th><th>Quantidade</th><th>Mínimo</th><th>Status</th></tr></thead><tbody id="stockTableBody"></tbody></table></div></section>`
+    },
+    relatorios: {
+      title: 'Relatórios',
+      subtitle: 'Exportações e análises detalhadas',
+      content: `
+        <section class="module-hero"><p class="eyebrow">Análises</p><h1>Relatórios</h1><p>Centralize indicadores e prepare exportações para acompanhamento do negócio.</p></section>
+        <section class="module-grid"><article class="module-card"><span>Relatórios disponíveis</span><strong>3</strong><small>Financeiro, vendas e estoque</small></article><article class="module-card"><span>Última atualização</span><strong>Hoje, 09:40</strong><small>Dados demonstrativos</small></article><article class="module-card"><span>Exportações</span><strong>Em breve</strong><small>CSV e PDF serão adicionados aqui</small></article></section>`
+    },
+    equipe: {
+      title: 'Equipe',
+      subtitle: 'Usuários e permissões de acesso',
+      content: `
+        <section class="module-hero"><p class="eyebrow">Acessos</p><h1>Equipe</h1><p>Cadastre integrantes e defina a função inicial de cada pessoa.</p></section>
+        <section class="team-panel" aria-labelledby="addMemberTitle">
+          <div class="settings-panel-head"><div><h2 id="addMemberTitle">Adicionar integrante</h2><p>O cadastro é local e não envia convite por e-mail.</p></div></div>
+          <form class="team-form" id="teamForm">
+            <label class="field"><span>Nome completo</span><input name="memberName" type="text" minlength="3" maxlength="80" required autocomplete="name"></label>
+            <label class="field"><span>E-mail</span><input name="memberEmail" type="email" maxlength="120" required autocomplete="email"></label>
+            <label class="field"><span>Função</span><select name="memberRole"><option value="admin">Administrador</option><option value="manager">Gerente</option><option value="operator">Operacional</option></select></label>
+            <button class="primary-button" type="submit">Adicionar integrante</button>
+          </form>
+          <p class="team-status" id="teamStatus" role="status" aria-live="polite"></p>
+        </section>
+        <section class="team-panel" aria-labelledby="teamListTitle">
+          <div class="settings-panel-head"><div><h2 id="teamListTitle">Integrantes cadastrados</h2><p id="teamCount">0 integrantes ativos</p></div></div>
+          <div class="table-wrap"><table class="team-table"><thead><tr><th>Integrante</th><th>Função</th><th>Status</th></tr></thead><tbody id="teamTableBody"></tbody></table></div>
+        </section>`
+    },
+    configuracoes: {
+      title: 'Configurações',
+      subtitle: 'Preferências gerais do sistema',
+      content: `
+        <section class="module-hero"><p class="eyebrow">Preferências</p><h1>Configurações</h1><p>Defina as preferências gerais usadas neste dispositivo.</p></section>
+        <form class="settings-form" id="settingsForm">
+          <section class="settings-panel" aria-labelledby="businessSettingsTitle">
+            <div class="settings-panel-head"><div><h2 id="businessSettingsTitle">Empresa</h2><p>Informações exibidas no sistema.</p></div></div>
+            <div class="settings-fields">
+              <label class="field"><span>Nome da empresa</span><input name="companyName" type="text" maxlength="80" required autocomplete="organization"></label>
+              <label class="field"><span>Nome curto</span><input name="companyShortName" type="text" maxlength="30" required></label>
+            </div>
+          </section>
+          <section class="settings-panel" aria-labelledby="regionalSettingsTitle">
+            <div class="settings-panel-head"><div><h2 id="regionalSettingsTitle">Região e formato</h2><p>Preferências de idioma, moeda e fuso horário.</p></div></div>
+            <div class="settings-fields settings-fields-three">
+              <label class="field"><span>Idioma</span><select name="language"><option value="pt-BR">Português (Brasil)</option></select></label>
+              <label class="field"><span>Moeda</span><select name="currency"><option value="BRL">Real brasileiro (R$)</option></select></label>
+              <label class="field"><span>Fuso horário</span><select name="timezone"><option value="America/Sao_Paulo">Brasília (GMT−3)</option></select></label>
+            </div>
+          </section>
+          <section class="settings-panel" aria-labelledby="notificationSettingsTitle">
+            <div class="settings-panel-head"><div><h2 id="notificationSettingsTitle">Alertas</h2><p>Escolha quais avisos deseja receber.</p></div></div>
+            <label class="setting-toggle"><input name="criticalStockAlerts" type="checkbox"><span class="toggle-control" aria-hidden="true"></span><span><strong>Alertas de estoque crítico</strong><small>Avise quando um produto atingir estoque baixo ou ficar esgotado.</small></span></label>
+          </section>
+          <div class="settings-actions"><p class="settings-status" id="settingsStatus" role="status" aria-live="polite"></p><button class="primary-button" type="submit">Salvar alterações</button></div>
+        </form>`
+    }
+  };
+
+  const pageId = document.body.dataset.page;
+  const page = pages[pageId];
+  if (!page) return;
+
+  const navigation = [
+    ['index.html', 'Painel', 'painel'],
+    ['financeiro.html', 'Financeiro', 'financeiro'],
+    ['vendas.html', 'Vendas', 'vendas'],
+    ['estoque.html', 'Estoque', 'estoque'],
+    ['relatorios.html', 'Relatórios', 'relatorios'],
+    ['equipe.html', 'Equipe', 'equipe'],
+    ['configuracoes.html', 'Configurações', 'configuracoes']
+  ];
+
+  const navLink = ([href, label, id]) => `<a class="nav-item${id === pageId ? ' active' : ''}" href="${href}"${id === pageId ? ' aria-current="page"' : ''}>${label}</a>`;
+
+  root.innerHTML = `
+    <div class="sidebar-overlay" id="overlay"></div>
+    <div class="app">
+      <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
+        <div class="brand"><img class="brand-logo" src="assets/sev-logo.jpeg" alt="SEV Gestão &amp; Sistemas"></div>
+        <div class="nav-label">Geral</div><nav class="nav">${navigation.slice(0, 5).map(navLink).join('')}</nav>
+        <div class="nav-label">Sistema</div><nav class="nav">${navigation.slice(5).map(navLink).join('')}</nav>
+        <button class="sidebar-footer sidebar-profile" type="button" data-profile-trigger aria-label="Abrir menu do perfil"><div class="avatar-sm" data-profile-avatar>JM</div><div><div class="who" data-profile-name>João Marcos</div><div class="role" data-profile-role>Administrador</div></div></button>
+      </aside>
+      <div class="main">
+        <header class="topbar">
+          <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menu" aria-controls="sidebar" aria-expanded="false">☰</button>
+          <div><div class="page-title">${page.title}</div><div class="page-sub">${page.subtitle}</div></div>
+          <div class="topbar-actions">
+            <div class="notification-wrap">
+              <button class="icon-btn" id="notificationButton" type="button" aria-label="Notificações" aria-haspopup="dialog" aria-controls="notificationPanel" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z"/><path d="M10 21h4"/></svg><span class="dot" id="notificationDot"></span></button>
+              <section class="notification-panel" id="notificationPanel" aria-label="Notificações" hidden><div class="notification-head"><div><strong>Notificações</strong><span id="notificationSummary"></span></div><button class="text-button" id="markNotificationsRead" type="button">Marcar todas como lidas</button></div><ul class="notification-list" id="notificationList"></ul></section>
+            </div>
+            <button class="avatar profile-trigger" type="button" data-profile-trigger aria-label="Abrir menu do perfil" data-profile-avatar>JM</button>
+          </div>
+        </header>
+        <main class="content module-content">${page.content}</main>
+      </div>
+    </div>`;
+
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('overlay');
+  const menuToggle = document.getElementById('menuToggle');
+  const closeMenu = () => {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('open');
+    menuToggle.setAttribute('aria-expanded', 'false');
+  };
+
+  menuToggle.addEventListener('click', () => {
+    const willOpen = !sidebar.classList.contains('open');
+    sidebar.classList.toggle('open', willOpen);
+    overlay.classList.toggle('open', willOpen);
+    menuToggle.setAttribute('aria-expanded', String(willOpen));
+  });
+  overlay.addEventListener('click', closeMenu);
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeMenu();
+  });
+
+  if (pageId === 'configuracoes') {
+    const settingsForm = document.getElementById('settingsForm');
+    const settingsStatus = document.getElementById('settingsStatus');
+    const storageKey = 'cerne.settings.v1';
+    const defaults = {
+      companyName: 'SEV Gestão & Sistemas',
+      companyShortName: 'SEV',
+      language: 'pt-BR',
+      currency: 'BRL',
+      timezone: 'America/Sao_Paulo',
+      criticalStockAlerts: true
+    };
+
+    const readSettings = () => {
+      try {
+        const stored = JSON.parse(localStorage.getItem(storageKey));
+        if (!stored || typeof stored !== 'object') return defaults;
+        const settings = { ...defaults, ...stored };
+        if (settings.companyName === 'Cerne') settings.companyName = defaults.companyName;
+        if (settings.companyShortName === 'Cerne') settings.companyShortName = defaults.companyShortName;
+        return settings;
+      } catch {
+        return defaults;
+      }
+    };
+
+    const settings = readSettings();
+    Object.entries(settings).forEach(([name, value]) => {
+      const input = settingsForm.elements.namedItem(name);
+      if (!input) return;
+      if (input.type === 'checkbox') input.checked = Boolean(value);
+      else input.value = value;
+    });
+
+    settingsForm.addEventListener('submit', event => {
+      event.preventDefault();
+      if (!settingsForm.reportValidity()) return;
+
+      const updatedSettings = {
+        companyName: settingsForm.elements.companyName.value.trim(),
+        companyShortName: settingsForm.elements.companyShortName.value.trim(),
+        language: settingsForm.elements.language.value,
+        currency: settingsForm.elements.currency.value,
+        timezone: settingsForm.elements.timezone.value,
+        criticalStockAlerts: settingsForm.elements.criticalStockAlerts.checked
+      };
+
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(updatedSettings));
+        settingsStatus.textContent = 'Configurações salvas neste dispositivo.';
+      } catch {
+        settingsStatus.textContent = 'Não foi possível salvar as configurações neste navegador.';
+      }
+    });
+  }
+
+  if (pageId === 'financeiro') {
+    const paymentData = {
+      pix: { label: 'Pix', amount: 'R$ 3.475', percent: '50%' },
+      card: { label: 'Cartão', amount: 'R$ 2.919', percent: '42%' },
+      boleto: { label: 'Boleto', amount: 'R$ 486', percent: '7%' },
+      other: { label: 'Outros', amount: 'R$ 70', percent: '1%' }
+    };
+    const paymentMethod = document.getElementById('paymentMethod');
+    const paymentAmount = document.getElementById('paymentAmount');
+    const paymentPercent = document.getElementById('paymentPercent');
+    const paymentButtons = document.querySelectorAll('[data-payment]');
+    paymentButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const payment = paymentData[button.dataset.payment];
+        if (!payment) return;
+        paymentMethod.textContent = payment.label;
+        paymentAmount.textContent = payment.amount;
+        paymentPercent.textContent = `${payment.percent} das vendas`;
+        paymentButtons.forEach(item => {
+          const isSelected = item === button;
+          item.classList.toggle('active', isSelected);
+          item.setAttribute('aria-pressed', String(isSelected));
+        });
+      });
+    });
+
+  }
+
+  if (pageId === 'estoque') {
+    const stockForm = document.getElementById('stockForm');
+    const stockStatus = document.getElementById('stockStatus');
+    const stockSearch = document.getElementById('stockSearch');
+    const stockTableBody = document.getElementById('stockTableBody');
+    const stockProductCount = document.getElementById('stockProductCount');
+    const stockLowCount = document.getElementById('stockLowCount');
+    const stockOutCount = document.getElementById('stockOutCount');
+    const stockListSummary = document.getElementById('stockListSummary');
+    const stockFilterButtons = document.querySelectorAll('[data-stock-filter]');
+    const storageKey = 'cerne.stock.v1';
+    const defaultStock = [
+      { id: 'fone-bluetooth', name: 'Fone bluetooth', quantity: 150, minimum: 30 },
+      { id: 'mochila-urbana', name: 'Mochila urbana', quantity: 75, minimum: 25 },
+      { id: 'luminaria-led', name: 'Luminária LED', quantity: 20, minimum: 50 },
+      { id: 'teclado-mecanico', name: 'Teclado mecânico', quantity: 0, minimum: 10 }
+    ];
+    const escapeHtml = value => String(value).replace(/[&<>'"]/g, character => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    })[character]);
+    const readStock = () => {
+      try {
+        const stored = JSON.parse(localStorage.getItem(storageKey));
+        if (!Array.isArray(stored)) return defaultStock;
+        return stored.filter(product => product && typeof product.id === 'string' && typeof product.name === 'string' && Number.isSafeInteger(product.quantity) && product.quantity >= 0 && Number.isSafeInteger(product.minimum) && product.minimum >= 0);
+      } catch {
+        return defaultStock;
+      }
+    };
+    let products = readStock();
+    if (!products.length) products = defaultStock;
+    let activeFilter = 'all';
+    const productStatus = product => product.quantity === 0 ? 'out' : product.quantity <= product.minimum ? 'low' : 'ok';
+    const statusLabel = status => ({ ok: 'Em estoque', low: 'Estoque baixo', out: 'Esgotado' })[status];
+    const showStockStatus = (message, isError = false) => {
+      stockStatus.textContent = message;
+      stockStatus.classList.toggle('error', isError);
+    };
+    const renderStock = () => {
+      const lowCount = products.filter(product => productStatus(product) === 'low').length;
+      const outCount = products.filter(product => productStatus(product) === 'out').length;
+      const query = stockSearch.value.trim().toLocaleLowerCase('pt-BR');
+      const visibleProducts = products.filter(product => {
+        const status = productStatus(product);
+        const matchesFilter = activeFilter === 'all' || status === 'low' || status === 'out';
+        return matchesFilter && product.name.toLocaleLowerCase('pt-BR').includes(query);
+      });
+      stockProductCount.textContent = String(products.length);
+      stockLowCount.textContent = String(lowCount);
+      stockOutCount.textContent = String(outCount);
+      stockListSummary.textContent = `${visibleProducts.length} produto${visibleProducts.length === 1 ? '' : 's'} exibido${visibleProducts.length === 1 ? '' : 's'}`;
+      stockTableBody.innerHTML = visibleProducts.length ? visibleProducts.map(product => {
+        const status = productStatus(product);
+        return `<tr><td><div class="prod-cell"><span class="prod-swatch stock-${status}"></span>${escapeHtml(product.name)}</div></td><td>${product.quantity}</td><td>${product.minimum}</td><td><span class="badge ${status}">${statusLabel(status)}</span></td></tr>`;
+      }).join('') : '<tr><td class="empty-table" colspan="4">Nenhum produto encontrado.</td></tr>';
+    };
+    const persistStock = () => {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(products));
+        window.dispatchEvent(new CustomEvent('cerne:stock-updated'));
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    const requestedSearch = new URLSearchParams(window.location.search).get('search');
+    if (requestedSearch) stockSearch.value = requestedSearch;
+    renderStock();
+    stockForm.addEventListener('submit', event => {
+      event.preventDefault();
+      if (!stockForm.reportValidity()) return;
+      const name = stockForm.elements.productName.value.trim();
+      const quantity = Number(stockForm.elements.productQuantity.value);
+      const minimum = Number(stockForm.elements.productMinimum.value);
+      if (name.length < 3 || !Number.isSafeInteger(quantity) || !Number.isSafeInteger(minimum) || quantity < 0 || minimum < 0) {
+        showStockStatus('Revise os dados do produto antes de salvar.', true);
+        return;
+      }
+      if (products.some(product => product.name.localeCompare(name, 'pt-BR', { sensitivity: 'accent' }) === 0)) {
+        showStockStatus('Já existe um produto cadastrado com este nome.', true);
+        stockForm.elements.productName.focus();
+        return;
+      }
+      products = [...products, { id: `${Date.now()}-${name}`, name, quantity, minimum }];
+      if (!persistStock()) {
+        products.pop();
+        showStockStatus('Não foi possível salvar o estoque neste navegador.', true);
+        return;
+      }
+      renderStock();
+      stockForm.reset();
+      showStockStatus('Produto adicionado ao estoque.');
+      stockForm.elements.productName.focus();
+    });
+    stockSearch.addEventListener('input', renderStock);
+    stockFilterButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        activeFilter = button.dataset.stockFilter;
+        stockFilterButtons.forEach(item => {
+          const isActive = item === button;
+          item.classList.toggle('active', isActive);
+          item.setAttribute('aria-pressed', String(isActive));
+        });
+        renderStock();
+      });
+    });
+  }
+
+  if (pageId === 'equipe') {
+    const teamForm = document.getElementById('teamForm');
+    const teamStatus = document.getElementById('teamStatus');
+    const teamTableBody = document.getElementById('teamTableBody');
+    const teamCount = document.getElementById('teamCount');
+    const storageKey = 'cerne.team.v1';
+    const roleLabels = { admin: 'Administrador', manager: 'Gerente', operator: 'Operacional' };
+    const defaultTeam = [{
+      id: 'joao-marcos',
+      name: 'João Marcos',
+      email: 'joao.marcos@sev.local',
+      role: 'admin'
+    }];
+    const escapeHtml = value => String(value).replace(/[&<>'"]/g, character => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    })[character]);
+    const readTeam = () => {
+      try {
+        const stored = JSON.parse(localStorage.getItem(storageKey));
+        if (!Array.isArray(stored)) return defaultTeam;
+        return stored.filter(member =>
+          member && typeof member.name === 'string' && typeof member.email === 'string' && roleLabels[member.role]
+        );
+      } catch {
+        return defaultTeam;
+      }
+    };
+    let team = readTeam();
+    if (!team.length) team = defaultTeam;
+    const showTeamStatus = (message, isError = false) => {
+      teamStatus.textContent = message;
+      teamStatus.classList.toggle('error', isError);
+    };
+
+    const renderTeam = () => {
+      teamCount.textContent = `${team.length} integrante${team.length === 1 ? '' : 's'} ativo${team.length === 1 ? '' : 's'}`;
+      teamTableBody.innerHTML = team.map(member => `
+        <tr>
+          <td><div class="member-cell"><span class="member-initials" aria-hidden="true">${escapeHtml(member.name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase())}</span><span><strong>${escapeHtml(member.name)}</strong><small>${escapeHtml(member.email)}</small></span></div></td>
+          <td>${escapeHtml(roleLabels[member.role])}</td>
+          <td><span class="badge ok">Ativo</span></td>
+        </tr>`).join('');
+    };
+
+    renderTeam();
+    teamForm.addEventListener('submit', event => {
+      event.preventDefault();
+      if (!teamForm.reportValidity()) return;
+
+      const name = teamForm.elements.memberName.value.trim();
+      const email = teamForm.elements.memberEmail.value.trim().toLowerCase();
+      const role = teamForm.elements.memberRole.value;
+      if (name.length < 3) {
+        showTeamStatus('Informe um nome com pelo menos 3 caracteres.', true);
+        teamForm.elements.memberName.focus();
+        return;
+      }
+      if (team.some(member => member.email.toLowerCase() === email)) {
+        showTeamStatus('Já existe um integrante cadastrado com este e-mail.', true);
+        teamForm.elements.memberEmail.focus();
+        return;
+      }
+
+      const newMember = { id: `${Date.now()}-${email}`, name, email, role };
+      const updatedTeam = [...team, newMember];
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(updatedTeam));
+        team = updatedTeam;
+        renderTeam();
+        teamForm.reset();
+        showTeamStatus('Integrante adicionado ao cadastro local.');
+        teamForm.elements.memberName.focus();
+      } catch {
+        showTeamStatus('Não foi possível salvar a equipe neste navegador.', true);
+      }
+    });
+  }
+})();

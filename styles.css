@@ -623,6 +623,72 @@ tbody tr:hover{ background: var(--surface-soft); }
 .payment-dot{ width:9px; height:9px; border-radius:50%; }
 .payment-dot.pix{ background:var(--brand); }.payment-dot.card{ background:var(--info); }.payment-dot.boleto{ background:var(--warning); }.payment-dot.other{ background:var(--danger); }
 
+/* ----------------------------------------------------- invoice import demo */
+.invoice-import-panel, .imported-expenses-panel{
+  padding:24px;
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  background:var(--surface);
+  box-shadow:var(--shadow-card);
+}
+.invoice-panel-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.invoice-import-panel h2, .imported-expenses-panel h2{ margin:0; font-family:var(--font-display); font-size:16px; }
+.invoice-panel-head p{ margin:4px 0 0; color:var(--ink-faint); font-size:13px; }
+.local-label, .review-badge{
+  padding:4px 8px; border-radius:999px; background:var(--success-tint); color:var(--success);
+  font-size:11px; font-weight:700; white-space:nowrap;
+}
+.invoice-import-layout{ display:grid; grid-template-columns:minmax(0, 1fr) minmax(230px, .7fr); gap:14px; }
+.invoice-dropzone{
+  display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:210px; padding:24px;
+  border:1.5px dashed var(--border); border-radius:var(--radius-md); background:var(--surface-soft); color:var(--ink-soft); text-align:center; cursor:pointer;
+  transition:border-color .15s ease, background .15s ease;
+}
+.invoice-dropzone:hover, .invoice-dropzone.is-dragging, .invoice-dropzone.has-file{ border-color:var(--brand); background:var(--brand-tint); }
+.invoice-upload-icon{
+  display:flex; align-items:center; justify-content:center; width:42px; height:42px; margin-bottom:12px;
+  border-radius:12px; background:var(--surface); color:var(--brand); box-shadow:0 2px 8px rgba(18,20,43,.08);
+}
+.invoice-upload-icon svg{ width:22px; height:22px; }
+.invoice-dropzone strong{ color:var(--ink); font-size:13px; }
+.invoice-dropzone small{ margin:6px 0 14px; color:var(--ink-faint); font-size:11.5px; }
+.secondary-button{
+  min-height:38px; padding:0 13px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface);
+  color:var(--brand); font:inherit; font-size:12.5px; font-weight:700; cursor:pointer;
+}
+.secondary-button:hover{ border-color:var(--brand); background:var(--brand-tint); }
+.invoice-file-card{
+  display:flex; align-items:center; gap:11px; min-height:82px; padding:14px; border:1px solid var(--border);
+  border-radius:var(--radius-md); background:var(--surface-soft);
+}
+.invoice-file-icon{
+  display:flex; align-items:center; justify-content:center; width:36px; height:42px; flex-shrink:0; border-radius:7px;
+  background:var(--danger-tint); color:var(--danger); font-size:11px; font-weight:800;
+}
+.invoice-file-card div{ min-width:0; flex:1; }
+.invoice-file-card strong, .invoice-file-card small{ display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.invoice-file-card strong{ color:var(--ink); font-size:12.5px; }
+.invoice-file-card small{ margin-top:4px; color:var(--ink-faint); font-size:11px; }
+.text-button{ border:0; background:transparent; color:var(--brand); font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+.text-button:hover{ color:var(--brand-ink); }
+.invoice-remove-file{ flex-shrink:0; padding:5px; }
+.invoice-import-actions{ display:flex; align-items:center; gap:16px; margin-top:14px; }
+.invoice-import-actions p{ min-height:18px; margin:0 auto 0 0; color:var(--ink-faint); font-size:12px; }
+.invoice-import-actions p.error{ color:var(--danger); }
+.invoice-import-actions .primary-button:disabled{ background:var(--ink-faint); cursor:not-allowed; }
+.invoice-review{ margin-top:18px; padding:18px; border:1px solid var(--brand); border-radius:var(--radius-md); background:linear-gradient(135deg, var(--surface), var(--brand-tint)); }
+.invoice-review-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:16px; }
+.invoice-review-kicker{ color:var(--brand); font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+.invoice-review h3{ margin:4px 0 3px; font-family:var(--font-display); font-size:15px; }
+.invoice-review p{ max-width:660px; margin:0; color:var(--ink-soft); font-size:11.5px; line-height:1.45; }
+.review-badge{ background:var(--warning-tint); color:var(--warning); }
+.invoice-fields{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; }
+.invoice-review-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:16px; }
+.imported-expenses-table td strong, .imported-expenses-table td small{ display:block; }
+.imported-expenses-table td strong{ color:var(--ink); font-size:12.5px; font-weight:600; }
+.imported-expenses-table td small{ max-width:250px; margin-top:2px; overflow:hidden; color:var(--ink-faint); font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+.expense-category{ display:inline-block; padding:4px 7px; border-radius:999px; background:var(--info-tint); color:var(--info); font-size:11px; font-weight:700; }
+
 /* ---------------------------------------------------- pending payments */
 .pending-panel{
   padding:24px;
@@ -861,6 +927,14 @@ tbody tr:hover{ background: var(--surface-soft); }
   .payment-panel .settings-panel-head{ flex-direction:column; gap:8px; }
   .payment-chart-layout{ flex-direction:column; gap:24px; }
   .payment-legend{ width:100%; max-width:280px; }
+  .invoice-import-panel, .imported-expenses-panel{ padding:20px; }
+  .invoice-panel-head, .invoice-review-head{ flex-direction:column; gap:8px; }
+  .invoice-import-layout, .invoice-fields{ grid-template-columns:1fr; }
+  .invoice-file-card{ min-height:70px; }
+  .invoice-import-actions{ align-items:stretch; flex-direction:column; }
+  .invoice-import-actions p{ margin:0; }
+  .invoice-review-actions{ flex-direction:column-reverse; }
+  .invoice-review-actions .primary-button, .invoice-review-actions .secondary-button{ width:100%; }
   .settings-panel{ padding:20px; }
   .team-panel{ padding:20px; }
   .stock-panel{ padding:20px; }

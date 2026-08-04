@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: sev-api
+    runtime: node
+    region: virginia
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/v1/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_VERSION
+        value: 24.14.1
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: FRONTEND_ORIGIN
+        value: https://sevgestaoesistemas.github.io
+      - key: SESSION_TTL_DAYS
+        value: "7"
+      - key: SESSION_SAME_SITE
+        value: none
+      - key: TRUST_PROXY
+        value: "true"
+      - key: DATABASE_SSL
+        value: "true"
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_SSL_CA
+        sync: false

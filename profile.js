@@ -1,31 +1,7 @@
-/* Local profile and session controls for the static prototype. */
+/* Profile controls. Session state is validated by the SEV API. */
 (() => {
-  const sessionKey = 'cerne.session.v1';
   const profileKey = 'cerne.profile.v1';
   const defaults = { name: 'João Marcos', email: 'joao.marcos@sev.local', role: 'Administrador', photo: '' };
-
-  const showSignedOutScreen = () => {
-    document.body.innerHTML = `
-      <main class="signed-out-screen">
-        <section class="signed-out-card">
-          <img class="signed-out-logo" src="assets/sev-logo.jpeg" alt="SEV Gestão & Sistemas">
-          <h1>Sessão encerrada</h1>
-          <p>Você saiu deste dispositivo. Seus dados locais não foram apagados.</p>
-          <button class="primary-button" id="signInAgain" type="button">Entrar novamente</button>
-        </section>
-      </main>`;
-    document.getElementById('signInAgain').addEventListener('click', () => {
-      try { localStorage.removeItem(sessionKey); } catch { /* Reload still restores the initial prototype state. */ }
-      window.location.reload();
-    });
-  };
-
-  try {
-    if (localStorage.getItem(sessionKey) === 'signed-out') {
-      showSignedOutScreen();
-      return;
-    }
-  } catch { /* Continue without persistent session support. */ }
 
   const readProfile = () => {
     try {
@@ -62,7 +38,7 @@
   const interfaceRoot = document.createElement('div');
   interfaceRoot.innerHTML = `
     <div class="profile-menu" id="profileMenu" hidden>
-      <div class="profile-menu-head"><span class="avatar-sm" id="menuProfileAvatar"></span><div><strong id="menuProfileName"></strong><small>Administrador</small></div></div>
+      <div class="profile-menu-head"><span class="avatar-sm" id="menuProfileAvatar"></span><div><strong id="menuProfileName"></strong><small id="menuProfileRole"></small></div></div>
       <button type="button" id="editProfileButton">Editar perfil</button>
       <button type="button" class="profile-logout" id="logoutButton">Sair</button>
     </div>
@@ -104,6 +80,7 @@
   };
   const renderMenu = () => {
     document.getElementById('menuProfileName').textContent = profile.name;
+    document.getElementById('menuProfileRole').textContent = profile.role;
     setAvatar(document.getElementById('menuProfileAvatar'), profile.name, profile.photo);
   };
   const closeMenu = () => { profileMenu.hidden = true; };
@@ -172,9 +149,27 @@
     }
   });
   document.getElementById('logoutButton').addEventListener('click', () => {
-    if (!window.confirm('Deseja encerrar a sessão neste dispositivo? Seus dados locais não serão apagados.')) return;
-    try { localStorage.setItem(sessionKey, 'signed-out'); } catch { /* The signed-out screen still protects the current view. */ }
-    showSignedOutScreen();
+    if (!window.confirm('Deseja encerrar sua sessão?')) return;
+    const logoutButton = document.getElementById('logoutButton');
+    logoutButton.disabled = true;
+    window.SevApi.logout()
+      .then(() => window.location.replace('login.html'))
+      .catch(error => {
+        logoutButton.disabled = false;
+        window.alert(error.message || 'Não foi possível encerrar a sessão.');
+      });
   });
   renderProfile();
+
+  const roleLabels = { owner: 'Proprietário', admin: 'Administrador', finance: 'Financeiro', inventory: 'Estoque', operator: 'Operacional' };
+  window.SevAuth?.ready.then(user => {
+    if (!user) return;
+    profile = {
+      ...profile,
+      name: user.name,
+      email: user.email,
+      role: roleLabels[user.organization?.role] || 'Usuário'
+    };
+    renderProfile();
+  });
 })();

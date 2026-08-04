@@ -30,6 +30,36 @@ document.addEventListener('DOMContentLoaded', () => {
     if (event.key === 'Escape') closeMenu();
   });
 
+  /* ---------------------------------------------- estoque do painel */
+  const dashboardStockTable = document.getElementById('dashboardStockTableBody');
+  if (dashboardStockTable && window.SevApi && window.SevAuth) {
+    const escapeHtml = value => String(value).replace(/[&<>'"]/g, character => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    })[character]);
+    const productStatus = product => product.quantity === 0 ? 'out' : product.quantity <= product.minimumQuantity ? 'low' : 'ok';
+    const statusLabel = status => ({ ok: 'Em estoque', low: 'Estoque baixo', out: 'Esgotado' })[status];
+    const statusColor = status => ({ ok: 'var(--success)', low: 'var(--warning)', out: 'var(--danger)' })[status];
+    const formatDate = value => {
+      if (!value) return '—';
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('pt-BR');
+    };
+
+    window.SevAuth.ready.then(async user => {
+      if (!user) return;
+      try {
+        const products = await window.SevApi.getProducts();
+        const visibleProducts = products.slice(0, 4);
+        dashboardStockTable.innerHTML = visibleProducts.length ? visibleProducts.map(product => {
+          const status = productStatus(product);
+          return `<tr><td><div class="prod-cell"><span class="prod-swatch" style="background:${statusColor(status)}"></span>${escapeHtml(product.name)}</div></td><td>${product.quantity}</td><td><span class="badge ${status}">${statusLabel(status)}</span></td><td>${formatDate(product.updatedAt || product.createdAt)}</td></tr>`;
+        }).join('') : '<tr><td class="empty-table" colspan="4">Nenhum produto cadastrado.</td></tr>';
+      } catch (error) {
+        dashboardStockTable.innerHTML = `<tr><td class="empty-table" colspan="4">${escapeHtml(error.message || 'Não foi possível carregar o estoque.')}</td></tr>`;
+      }
+    });
+  }
+
   /* ---------------------------------------------------------- abas da tabela */
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {

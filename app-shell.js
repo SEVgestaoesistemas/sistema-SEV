@@ -95,7 +95,7 @@
       content: `
         <section class="module-hero"><p class="eyebrow">Catálogo e inventário</p><h1>Estoque</h1><p>Cadastre produtos e acompanhe níveis mínimos para reposição.</p></section>
         <section class="module-grid stock-summary-grid"><article class="module-card"><span>Produtos cadastrados</span><strong id="stockProductCount">0</strong><small>Itens diferentes no catálogo</small></article><article class="module-card"><span>Estoque baixo</span><strong id="stockLowCount">0</strong><small>Produtos que exigem reposição</small></article><article class="module-card"><span>Esgotados</span><strong id="stockOutCount">0</strong><small>Produtos sem unidades disponíveis</small></article></section>
-        <section class="stock-panel" aria-labelledby="addProductTitle"><div class="settings-panel-head"><div><h2 id="addProductTitle">Cadastrar produto</h2><p>O cadastro é salvo somente neste navegador até a integração com a API.</p></div></div><form class="stock-form" id="stockForm"><label class="field"><span>Nome do produto</span><input name="productName" type="text" minlength="3" maxlength="100" required></label><label class="field"><span>Quantidade atual</span><input name="productQuantity" type="number" min="0" max="1000000" step="1" required inputmode="numeric"></label><label class="field"><span>Estoque mínimo</span><input name="productMinimum" type="number" min="0" max="1000000" step="1" required inputmode="numeric"></label><button class="primary-button" type="submit">Adicionar produto</button></form><p class="stock-status" id="stockStatus" role="status" aria-live="polite"></p></section>
+        <section class="stock-panel" aria-labelledby="addProductTitle"><div class="settings-panel-head"><div><h2 id="addProductTitle">Cadastrar produto</h2><p>O cadastro é salvo com segurança no estoque da sua empresa.</p></div></div><form class="stock-form" id="stockForm"><label class="field"><span>Nome do produto</span><input name="productName" type="text" minlength="3" maxlength="100" required></label><label class="field"><span>Quantidade atual</span><input name="productQuantity" type="number" min="0" max="1000000" step="1" required inputmode="numeric"></label><label class="field"><span>Estoque mínimo</span><input name="productMinimum" type="number" min="0" max="1000000" step="1" required inputmode="numeric"></label><button class="primary-button" type="submit">Adicionar produto</button></form><p class="stock-status" id="stockStatus" role="status" aria-live="polite"></p></section>
         <section class="stock-panel" aria-labelledby="catalogTitle"><div class="stock-toolbar"><div><h2 id="catalogTitle">Produtos cadastrados</h2><p id="stockListSummary">0 produtos no catálogo</p></div><div class="stock-toolbar-controls"><label class="stock-search"><span class="sr-only">Buscar produto</span><input id="stockSearch" type="search" placeholder="Buscar produto"></label><div class="tabs" aria-label="Filtros de estoque"><button class="tab active" type="button" data-stock-filter="all" aria-pressed="true">Todos</button><button class="tab" type="button" data-stock-filter="critical" aria-pressed="false">Críticos</button></div></div></div><div class="table-wrap"><table class="stock-table"><thead><tr><th>Produto</th><th>Quantidade</th><th>Mínimo</th><th>Status</th></tr></thead><tbody id="stockTableBody"></tbody></table></div></section>`
     },
     relatorios: {
@@ -310,29 +310,13 @@
     const stockOutCount = document.getElementById('stockOutCount');
     const stockListSummary = document.getElementById('stockListSummary');
     const stockFilterButtons = document.querySelectorAll('[data-stock-filter]');
-    const storageKey = 'cerne.stock.v1';
-    const defaultStock = [
-      { id: 'fone-bluetooth', name: 'Fone bluetooth', quantity: 150, minimum: 30 },
-      { id: 'mochila-urbana', name: 'Mochila urbana', quantity: 75, minimum: 25 },
-      { id: 'luminaria-led', name: 'Luminária LED', quantity: 20, minimum: 50 },
-      { id: 'teclado-mecanico', name: 'Teclado mecânico', quantity: 0, minimum: 10 }
-    ];
+    const submitButton = stockForm.querySelector('button[type="submit"]');
     const escapeHtml = value => String(value).replace(/[&<>'"]/g, character => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
     })[character]);
-    const readStock = () => {
-      try {
-        const stored = JSON.parse(localStorage.getItem(storageKey));
-        if (!Array.isArray(stored)) return defaultStock;
-        return stored.filter(product => product && typeof product.id === 'string' && typeof product.name === 'string' && Number.isSafeInteger(product.quantity) && product.quantity >= 0 && Number.isSafeInteger(product.minimum) && product.minimum >= 0);
-      } catch {
-        return defaultStock;
-      }
-    };
-    let products = readStock();
-    if (!products.length) products = defaultStock;
+    let products = [];
     let activeFilter = 'all';
-    const productStatus = product => product.quantity === 0 ? 'out' : product.quantity <= product.minimum ? 'low' : 'ok';
+    const productStatus = product => product.quantity === 0 ? 'out' : product.quantity <= product.minimumQuantity ? 'low' : 'ok';
     const statusLabel = status => ({ ok: 'Em estoque', low: 'Estoque baixo', out: 'Esgotado' })[status];
     const showStockStatus = (message, isError = false) => {
       stockStatus.textContent = message;
@@ -344,7 +328,7 @@
       const query = stockSearch.value.trim().toLocaleLowerCase('pt-BR');
       const visibleProducts = products.filter(product => {
         const status = productStatus(product);
-        const matchesFilter = activeFilter === 'all' || status === 'low' || status === 'out';
+        const matchesFilter = activeFilter === 'all' || (activeFilter === 'critical' && status !== 'ok');
         return matchesFilter && product.name.toLocaleLowerCase('pt-BR').includes(query);
       });
       stockProductCount.textContent = String(products.length);
@@ -353,29 +337,38 @@
       stockListSummary.textContent = `${visibleProducts.length} produto${visibleProducts.length === 1 ? '' : 's'} exibido${visibleProducts.length === 1 ? '' : 's'}`;
       stockTableBody.innerHTML = visibleProducts.length ? visibleProducts.map(product => {
         const status = productStatus(product);
-        return `<tr><td><div class="prod-cell"><span class="prod-swatch stock-${status}"></span>${escapeHtml(product.name)}</div></td><td>${product.quantity}</td><td>${product.minimum}</td><td><span class="badge ${status}">${statusLabel(status)}</span></td></tr>`;
+        return `<tr><td><div class="prod-cell"><span class="prod-swatch stock-${status}"></span>${escapeHtml(product.name)}</div></td><td>${product.quantity}</td><td>${product.minimumQuantity}</td><td><span class="badge ${status}">${statusLabel(status)}</span></td></tr>`;
       }).join('') : '<tr><td class="empty-table" colspan="4">Nenhum produto encontrado.</td></tr>';
     };
-    const persistStock = () => {
+    const setSubmitting = submitting => {
+      submitButton.disabled = submitting;
+      submitButton.textContent = submitting ? 'Salvando…' : 'Adicionar produto';
+    };
+    const loadProducts = async () => {
+      showStockStatus('Carregando produtos…');
       try {
-        localStorage.setItem(storageKey, JSON.stringify(products));
-        window.dispatchEvent(new CustomEvent('cerne:stock-updated'));
-        return true;
-      } catch {
-        return false;
+        const user = await window.SevAuth.ready;
+        if (!user) return;
+        products = await window.SevApi.getProducts();
+        renderStock();
+        showStockStatus('');
+      } catch (error) {
+        showStockStatus(error.message || 'Não foi possível carregar o estoque.', true);
       }
     };
 
     const requestedSearch = new URLSearchParams(window.location.search).get('search');
     if (requestedSearch) stockSearch.value = requestedSearch;
     renderStock();
-    stockForm.addEventListener('submit', event => {
+    loadProducts();
+
+    stockForm.addEventListener('submit', async event => {
       event.preventDefault();
       if (!stockForm.reportValidity()) return;
       const name = stockForm.elements.productName.value.trim();
       const quantity = Number(stockForm.elements.productQuantity.value);
-      const minimum = Number(stockForm.elements.productMinimum.value);
-      if (name.length < 3 || !Number.isSafeInteger(quantity) || !Number.isSafeInteger(minimum) || quantity < 0 || minimum < 0) {
+      const minimumQuantity = Number(stockForm.elements.productMinimum.value);
+      if (name.length < 3 || !Number.isSafeInteger(quantity) || !Number.isSafeInteger(minimumQuantity) || quantity < 0 || minimumQuantity < 0) {
         showStockStatus('Revise os dados do produto antes de salvar.', true);
         return;
       }
@@ -384,16 +377,21 @@
         stockForm.elements.productName.focus();
         return;
       }
-      products = [...products, { id: `${Date.now()}-${name}`, name, quantity, minimum }];
-      if (!persistStock()) {
-        products.pop();
-        showStockStatus('Não foi possível salvar o estoque neste navegador.', true);
-        return;
+
+      setSubmitting(true);
+      showStockStatus('');
+      try {
+        const product = await window.SevApi.createProduct({ name, quantity, minimumQuantity });
+        products = [...products, product].sort((first, second) => first.name.localeCompare(second.name, 'pt-BR'));
+        renderStock();
+        stockForm.reset();
+        showStockStatus('Produto cadastrado no estoque da empresa.');
+        stockForm.elements.productName.focus();
+      } catch (error) {
+        showStockStatus(error.message || 'Não foi possível cadastrar o produto.', true);
+      } finally {
+        setSubmitting(false);
       }
-      renderStock();
-      stockForm.reset();
-      showStockStatus('Produto adicionado ao estoque.');
-      stockForm.elements.productName.focus();
     });
     stockSearch.addEventListener('input', renderStock);
     stockFilterButtons.forEach(button => {

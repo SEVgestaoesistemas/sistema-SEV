@@ -4,13 +4,7 @@
   const input = document.getElementById('globalSearch');
   if (!form || !input) return;
 
-  const stockStorageKey = 'cerne.stock.v1';
-  const fallbackStock = [
-    { name: 'Fone bluetooth' },
-    { name: 'Mochila urbana' },
-    { name: 'Luminária LED' },
-    { name: 'Teclado mecânico' }
-  ];
+  let stock = [];
   const pages = [
     { title: 'Financeiro', description: 'Receitas, despesas e recebimentos pendentes', href: 'financeiro.html', terms: 'financeiro receita despesa pagamento cliente pendente' },
     { title: 'Vendas', description: 'Pedidos, clientes e ticket médio', href: 'vendas.html', terms: 'vendas pedido cliente ticket' },
@@ -23,17 +17,6 @@
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
   })[character]);
   const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
-  const readStock = () => {
-    try {
-      const stored = JSON.parse(localStorage.getItem(stockStorageKey));
-      if (!Array.isArray(stored)) return fallbackStock;
-      const products = stored.filter(product => product && typeof product.name === 'string');
-      return products.length ? products : fallbackStock;
-    } catch {
-      return fallbackStock;
-    }
-  };
-
   const results = document.createElement('ul');
   results.className = 'search-results';
   results.id = 'globalSearchResults';
@@ -53,7 +36,7 @@
       return;
     }
     const pageResults = pages.filter(page => normalize(`${page.title} ${page.description} ${page.terms}`).includes(query)).map(page => ({ ...page, kind: 'Módulo' }));
-    const productResults = readStock().filter(product => normalize(product.name).includes(query)).map(product => ({
+    const productResults = stock.filter(product => normalize(product.name).includes(query)).map(product => ({
       title: product.name,
       description: 'Abrir produto no estoque',
       href: `estoque.html?search=${encodeURIComponent(product.name)}`,
@@ -80,5 +63,15 @@
   });
   document.addEventListener('click', event => {
     if (!event.target.closest('#globalSearchForm')) closeResults();
+  });
+
+  window.SevAuth?.ready.then(async user => {
+    if (!user) return;
+    try {
+      stock = await window.SevApi.getProducts();
+      if (document.activeElement === input) render();
+    } catch {
+      // The product search stays empty when the current role cannot access stock.
+    }
   });
 })();

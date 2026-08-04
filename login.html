@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entrar · SEV Gestão &amp; Sistemas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="login-page">
+  <main class="login-layout">
+    <section class="login-card" aria-labelledby="loginTitle">
+      <img class="login-logo" src="assets/sev-logo.jpeg" alt="SEV Gestão &amp; Sistemas">
+      <div class="login-heading">
+        <p class="eyebrow">Acesso seguro</p>
+        <h1 id="loginTitle">Bem-vindo à SEV</h1>
+        <p>Entre para acessar os dados da sua empresa.</p>
+      </div>
+
+      <div class="auth-tabs" role="tablist" aria-label="Acesso à conta">
+        <button id="showLogin" class="active" type="button" role="tab" aria-selected="true">Entrar</button>
+        <button id="showRegister" type="button" role="tab" aria-selected="false">Criar empresa</button>
+      </div>
+
+      <section id="loginPanel" role="tabpanel">
+        <form class="login-form" id="loginForm">
+          <label class="field"><span>E-mail</span><input name="email" type="email" autocomplete="email" maxlength="160" required></label>
+          <label class="field"><span>Senha</span><input name="password" type="password" autocomplete="current-password" maxlength="128" required></label>
+          <p class="login-status" id="loginStatus" role="status" aria-live="polite"></p>
+          <button class="primary-button" type="submit" data-label="Entrar">Entrar</button>
+        </form>
+      </section>
+
+      <section id="registerPanel" role="tabpanel" hidden>
+        <form class="login-form" id="registerForm">
+          <label class="field"><span>Nome da empresa</span><input name="organizationName" type="text" autocomplete="organization" minlength="2" maxlength="100" required></label>
+          <label class="field"><span>Seu nome completo</span><input name="name" type="text" autocomplete="name" minlength="3" maxlength="100" required></label>
+          <label class="field"><span>E-mail</span><input name="email" type="email" autocomplete="email" maxlength="160" required></label>
+          <label class="field"><span>Senha</span><input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required aria-describedby="passwordHelp"></label>
+          <small id="passwordHelp">Use ao menos 12 caracteres, com letras maiúsculas, minúsculas e números.</small>
+          <label class="field"><span>Confirmar senha</span><input name="confirmPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label>
+          <p class="login-status" id="registerStatus" role="status" aria-live="polite"></p>
+          <button class="primary-button" type="submit" data-label="Criar empresa">Criar empresa</button>
+        </form>
+      </section>
+    </section>
+  </main>
+  <script src="api.js"></script>
+  <script src="login.js"></script>
+</body>
+</html>

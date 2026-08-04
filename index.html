@@ -243,7 +243,7 @@
               <thead>
                 <tr><th>Produto</th><th>Qtde.</th><th>Status</th><th>Atualizado</th></tr>
               </thead>
-              <tbody>
+              <tbody id="dashboardStockTableBody">
                 <tr>
                   <td><div class="prod-cell"><span class="prod-swatch" style="background:var(--brand)"></span>Produto C — fone bluetooth</div></td>
                   <td>150</td>
@@ -275,12 +275,14 @@
 
       </section>
 
-      <div class="footnote">Base gerada para o seu sistema — pronta para conectar à sua API. <strong>SEV Gestão &amp; Sistemas</strong> · componentes em <code>index.html</code>, <code>styles.css</code> e <code>script.js</code>.</div>
+      <div class="footnote">Dados de estoque conectados à sua empresa. <strong>SEV Gestão &amp; Sistemas</strong></div>
 
     </main>
   </div>
 </div>
 
+<script src="api.js"></script>
+<script src="auth-guard.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <script src="script.js"></script>
 <script src="profile.js"></script>

@@ -1,9 +1,5 @@
 /* Visual support chat. Responses are local demonstrations until a secure API is connected. */
 (() => {
-  try {
-    if (localStorage.getItem('cerne.session.v1') === 'signed-out') return;
-  } catch { /* Continue when browser storage is unavailable. */ }
-
   const widget = document.createElement('section');
   widget.className = 'support-widget';
   widget.innerHTML = `

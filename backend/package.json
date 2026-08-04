@@ -6,7 +6,7 @@
   "description": "API segura do SEV Gestão & Sistemas.",
   "scripts": {
     "dev": "node --watch --env-file=.env src/server.js",
-    "start": "node --env-file=.env src/server.js",
+    "start": "node src/server.js",
     "test": "node --test",
     "db:migrate": "node --env-file=.env src/db/migrate.js",
     "db:verify": "node --env-file=.env src/db/verify.js",

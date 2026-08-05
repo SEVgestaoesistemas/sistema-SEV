@@ -122,6 +122,8 @@ test('authenticated API requests remain isolated even when given another organiz
       return {
         organizationA,
         organizationB,
+        userAId: userA.rows[0].id,
+        userBId: userB.rows[0].id,
         userIds: [userA.rows[0].id, userB.rows[0].id],
         sessionA,
         productBId: productB.rows[0].id,
@@ -155,6 +157,27 @@ test('authenticated API requests remain isolated even when given another organiz
     });
     assert.equal(foreignRead.statusCode, 200);
     assert.equal(foreignRead.json().notification, null);
+
+    const avatarData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL3iQAAAABJRU5ErkJggg==';
+    const profileUpdated = await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/profile',
+      headers,
+      payload: {
+        name: 'API RLS User A Updated',
+        email: `rls-a-updated-${randomUUID()}@test.invalid`,
+        avatarData
+      }
+    });
+    assert.equal(profileUpdated.statusCode, 200);
+    assert.equal(profileUpdated.json().profile.avatarData, avatarData);
+    const persistedProfile = await database.query(
+      'SELECT name, email, avatar_data AS "avatarData" FROM users WHERE id = $1',
+      [fixture.userAId]
+    );
+    assert.equal(persistedProfile.rows[0].avatarData, avatarData);
+    const otherProfile = await database.query('SELECT avatar_data AS "avatarData" FROM users WHERE id = $1', [fixture.userBId]);
+    assert.equal(otherProfile.rows[0].avatarData, null);
 
     const productCreated = await app.inject({
       method: 'POST',

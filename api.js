@@ -119,6 +119,12 @@
       body: password,
       csrf: true
     }),
+    getProfile: async () => (await request('/profile')).profile,
+    updateProfile: async profile => (await request('/profile', {
+      method: 'PATCH',
+      body: profile,
+      csrf: true
+    })).profile,
     bootstrapPlatformAdmin: async payload => (await request('/platform/bootstrap', {
       method: 'POST',
       body: payload

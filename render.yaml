@@ -22,6 +22,11 @@ services:
         value: "7"
       - key: SESSION_SAME_SITE
         value: none
+      # Temporário para validação: volte para 5 antes da entrega ao cliente.
+      - key: LOGIN_RATE_LIMIT_MAX
+        value: "20"
+      - key: LOGIN_RATE_LIMIT_WINDOW
+        value: "15 minutes"
       - key: TRUST_PROXY
         value: "true"
       - key: DATABASE_SSL

@@ -12,6 +12,11 @@ const environmentSchema = z.object({
   FRONTEND_ORIGIN: z.string().min(1).default('http://127.0.0.1:5500'),
   SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(30).default(7),
   SESSION_SAME_SITE: z.enum(['lax', 'strict', 'none']).default('lax'),
+  LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().min(1).max(100).default(5),
+  LOGIN_RATE_LIMIT_WINDOW: z.string().trim().regex(
+    /^\d+\s*(second|seconds|minute|minutes|hour|hours)$/i,
+    'LOGIN_RATE_LIMIT_WINDOW deve usar um valor como "15 minutes".'
+  ).default('15 minutes'),
   TRUST_PROXY: z.enum(['true', 'false']).optional(),
   DATABASE_SSL: z.enum(['true', 'false']).optional(),
   DATABASE_SSL_CA_FILE: optionalText,
@@ -40,6 +45,8 @@ export const loadConfig = (environment = process.env) => {
     allowedOrigins: values.FRONTEND_ORIGIN.split(',').map(origin => origin.trim()).filter(Boolean),
     sessionTtlDays: values.SESSION_TTL_DAYS,
     sessionSameSite: values.SESSION_SAME_SITE,
+    loginRateLimitMax: values.LOGIN_RATE_LIMIT_MAX,
+    loginRateLimitWindow: values.LOGIN_RATE_LIMIT_WINDOW,
     trustProxy: values.TRUST_PROXY ? values.TRUST_PROXY === 'true' : values.NODE_ENV === 'production',
     databaseUrl: values.DATABASE_URL,
     databaseSsl: values.DATABASE_SSL ? values.DATABASE_SSL === 'true' : values.NODE_ENV === 'production',

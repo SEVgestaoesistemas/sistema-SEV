@@ -28,6 +28,12 @@ export const buildApp = async (options = {}) => {
   app.decorate('db', db);
   app.decorateRequest('auth', null);
 
+  if (config.environment === 'production' && config.loginRateLimitMax > 5) {
+    app.log.warn(
+      `LOGIN_RATE_LIMIT_MAX está em ${config.loginRateLimitMax} para testes. Volte para 5 antes da entrega ao cliente.`
+    );
+  }
+
   await app.register(helmet, {
     contentSecurityPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' }

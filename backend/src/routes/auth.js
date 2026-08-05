@@ -39,7 +39,12 @@ export const registerAuthRoutes = async app => {
   });
 
   app.post('/login', {
-    config: { rateLimit: { max: 5, timeWindow: '15 minutes' } }
+    config: {
+      rateLimit: {
+        max: app.config.loginRateLimitMax,
+        timeWindow: app.config.loginRateLimitWindow
+      }
+    }
   }, async (request, reply) => {
     const payload = validate(loginSchema, request.body);
     const account = await login(app.db, payload, app.config);

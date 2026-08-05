@@ -9,6 +9,8 @@ const config = {
   allowedOrigins: ['http://127.0.0.1:5500'],
   sessionTtlDays: 7,
   sessionSameSite: 'lax',
+  loginRateLimitMax: 5,
+  loginRateLimitWindow: '15 minutes',
   trustProxy: false,
   databaseUrl: undefined,
   databaseSsl: false,
@@ -33,5 +35,21 @@ test('endpoint de saúde informa que a API está ativa', async () => {
     service: 'sev-backend',
     database: 'not-configured'
   });
+  await app.close();
+});
+
+test('login respeita o limite configurado por ambiente', async () => {
+  const app = await buildApp({
+    config: { ...config, loginRateLimitMax: 2, loginRateLimitWindow: '15 minutes' },
+    db: database,
+    logger: false
+  });
+  const request = () => app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: {} });
+
+  assert.equal((await request()).statusCode, 400);
+  assert.equal((await request()).statusCode, 400);
+  const limited = await request();
+  assert.equal(limited.statusCode, 429);
+  assert.equal(limited.headers['x-ratelimit-limit'], '2');
   await app.close();
 });

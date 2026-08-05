@@ -11,6 +11,17 @@ API responsável por autenticação, permissões, estoque, despesas, notificaç�
 - Controle de acesso por função
 - Registro de auditoria para alterações relevantes
 
+## Isolamento multiempresa (RLS)
+
+As tabelas que armazenam dados das empresas usam **Row Level Security**. Nas requisições autenticadas, a API troca temporariamente para o papel interno restrito `sev_tenant_api` e fixa, dentro da transação, a empresa e o usuário da sessão. Assim, mesmo se uma consulta futura esquecer o filtro por `organization_id`, o PostgreSQL não devolve nem altera registros de outra empresa.
+
+O teste de integração cria dados temporários dentro de uma transação e sempre faz rollback; ele não deixa registros no banco. Execute-o após aplicar a migração:
+
+```powershell
+$env:RUN_DATABASE_SECURITY_TESTS = 'true'
+npm.cmd run test:tenant-isolation
+```
+
 ## Executar localmente
 
 1. Copie `.env.example` para `.env` e ajuste a conexão PostgreSQL.

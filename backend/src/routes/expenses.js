@@ -39,7 +39,7 @@ export const registerExpenseRoutes = async app => {
     const values = [request.auth.organization.id, query.limit];
     const statusCondition = query.status ? 'AND status = $3' : '';
     if (query.status) values.push(query.status);
-    const result = await app.db.query(
+    const result = await request.tenantDb.query(
       `SELECT id, supplier_name AS "supplierName", supplier_cnpj AS "supplierCnpj", document_number AS "documentNumber",
               issue_date AS "issueDate", due_date AS "dueDate", category, description, amount_cents AS "amountCents",
               status, document_file_name AS "documentFileName", created_at AS "createdAt"
@@ -56,7 +56,7 @@ export const registerExpenseRoutes = async app => {
     preHandler: [requireAuth, requireCsrf, requireAccountAccess, requireRoles(financeRoles)]
   }, async (request, reply) => {
     const payload = validate(expenseSchema, request.body);
-    const expense = await app.db.transaction(async transaction => {
+    const expense = await request.tenantDb.transaction(async transaction => {
       const result = await transaction.query(
         `INSERT INTO expenses (
            organization_id, supplier_name, supplier_cnpj, document_number, document_key, issue_date,

@@ -9,6 +9,10 @@ export const requireAuth = async request => {
     throw new AppError('Sessão inválida ou expirada.', { statusCode: 401, code: 'UNAUTHENTICATED' });
   }
   request.auth = session;
+  request.tenantDb = request.server.db.forTenant({
+    organizationId: session.organization.id,
+    userId: session.id
+  });
 };
 
 export const requireCsrf = async request => {

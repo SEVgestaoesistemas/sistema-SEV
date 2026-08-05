@@ -12,7 +12,7 @@ const invitationSchema = z.object({
 
 export const registerTeamRoutes = async app => {
   app.get('/team', { preHandler: [requireAuth, requireAccountAccess, requireRoles(teamRoles)] }, async request => {
-    const result = await app.db.query(
+    const result = await request.tenantDb.query(
       `SELECT u.id, u.name, u.email, u.avatar_url AS "avatarUrl", membership.role,
               'active' AS status, membership.created_at AS "createdAt"
          FROM organization_memberships membership
@@ -34,7 +34,7 @@ export const registerTeamRoutes = async app => {
     preHandler: [requireAuth, requireCsrf, requireAccountAccess, requireRoles(teamRoles)]
   }, async (request, reply) => {
     const payload = validate(invitationSchema, request.body);
-    const invitation = await createInvitation(app.db, payload, request.auth, app.config);
+    const invitation = await createInvitation(request.tenantDb, payload, request.auth, app.config);
     return reply.code(201).send({ invitation });
   });
 };

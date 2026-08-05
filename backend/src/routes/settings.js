@@ -30,13 +30,13 @@ const shapeSettings = organization => ({
 
 export const registerSettingsRoutes = async app => {
   app.get('/settings', { preHandler: [requireAuth, requireAccountAccess, requireRoles(settingsRoles)] }, async request => {
-    const result = await app.db.query('SELECT name, settings FROM organizations WHERE id = $1', [request.auth.organization.id]);
+    const result = await request.tenantDb.query('SELECT name, settings FROM organizations WHERE id = $1', [request.auth.organization.id]);
     return { settings: shapeSettings(result.rows[0]) };
   });
 
   app.patch('/settings', { preHandler: [requireAuth, requireCsrf, requireAccountAccess, requireRoles(settingsRoles)] }, async request => {
     const payload = validate(settingsSchema, request.body);
-    const settings = await app.db.transaction(async transaction => {
+    const settings = await request.tenantDb.transaction(async transaction => {
       const current = await transaction.query('SELECT name, settings FROM organizations WHERE id = $1 FOR UPDATE', [request.auth.organization.id]);
       const oldOrganization = current.rows[0];
       const nextSettings = {

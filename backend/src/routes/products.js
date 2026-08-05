@@ -14,7 +14,7 @@ const inventoryRoles = ['owner', 'admin', 'inventory'];
 
 export const registerProductRoutes = async app => {
   app.get('/products', { preHandler: [requireAuth, requireAccountAccess, requireRoles(inventoryRoles)] }, async request => {
-    const result = await app.db.query(
+    const result = await request.tenantDb.query(
       `SELECT id, name, sku, quantity, minimum_quantity AS "minimumQuantity", created_at AS "createdAt", updated_at AS "updatedAt"
          FROM products
         WHERE organization_id = $1
@@ -28,7 +28,7 @@ export const registerProductRoutes = async app => {
     preHandler: [requireAuth, requireCsrf, requireAccountAccess, requireRoles(inventoryRoles)]
   }, async (request, reply) => {
     const payload = validate(productSchema, request.body);
-    const product = await app.db.transaction(async transaction => {
+    const product = await request.tenantDb.transaction(async transaction => {
       const result = await transaction.query(
         `INSERT INTO products (organization_id, name, sku, quantity, minimum_quantity)
          VALUES ($1, $2, $3, $4, $5)

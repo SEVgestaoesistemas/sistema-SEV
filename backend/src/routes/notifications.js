@@ -6,7 +6,7 @@ const notificationIdSchema = z.object({ id: z.string().uuid() });
 
 export const registerNotificationRoutes = async app => {
   app.get('/notifications', { preHandler: [requireAuth, requireAccountAccess] }, async request => {
-    const result = await app.db.query(
+    const result = await request.tenantDb.query(
       `SELECT n.id, n.category, n.title, n.message, n.created_at AS "createdAt",
               reads.read_at AS "readAt"
          FROM notifications n
@@ -21,7 +21,7 @@ export const registerNotificationRoutes = async app => {
 
   app.patch('/notifications/:id/read', { preHandler: [requireAuth, requireCsrf, requireAccountAccess] }, async request => {
     const params = validate(notificationIdSchema, request.params);
-    const result = await app.db.query(
+    const result = await request.tenantDb.query(
       `INSERT INTO notification_reads (notification_id, user_id)
        SELECT id, $2 FROM notifications
         WHERE id = $1 AND organization_id = $3 AND (user_id IS NULL OR user_id = $2)
@@ -34,7 +34,7 @@ export const registerNotificationRoutes = async app => {
   });
 
   app.post('/notifications/read-all', { preHandler: [requireAuth, requireCsrf, requireAccountAccess] }, async request => {
-    await app.db.query(
+    await request.tenantDb.query(
       `INSERT INTO notification_reads (notification_id, user_id)
        SELECT n.id, $2 FROM notifications n
         WHERE n.organization_id = $1 AND (n.user_id IS NULL OR n.user_id = $2)

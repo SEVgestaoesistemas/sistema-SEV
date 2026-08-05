@@ -28,6 +28,7 @@ export const buildApp = async (options = {}) => {
   app.decorate('config', config);
   app.decorate('db', db);
   app.decorateRequest('auth', null);
+  app.decorateRequest('tenantDb', null);
 
   if (config.environment === 'production' && config.loginRateLimitMax > 5) {
     app.log.warn(

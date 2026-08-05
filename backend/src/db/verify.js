@@ -12,6 +12,7 @@ const requiredTables = [
   'customers',
   'sales',
   'sale_items',
+  'accounts_receivable',
   'notifications',
   'audit_logs',
   'platform_administrators'

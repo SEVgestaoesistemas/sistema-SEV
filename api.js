@@ -179,6 +179,12 @@
     })).sale,
     getSalesDashboard: async () => (await request('/sales/dashboard')).dashboard,
     getDashboardOverview: async () => (await request('/dashboard/overview')).dashboard,
+    getReceivables: async parameters => (await request(`/receivables${queryString(parameters)}`)).receivables,
+    getReceivablesDashboard: async () => (await request('/receivables/dashboard')).dashboard,
+    markReceivablePaid: async id => (await request(`/receivables/${encodeURIComponent(id)}/mark-paid`, {
+      method: 'PATCH',
+      csrf: true
+    })).receivable,
     getExpenses: async parameters => (await request(`/expenses${queryString(parameters)}`)).expenses,
     createExpense: async expense => (await request('/expenses', {
       method: 'POST',

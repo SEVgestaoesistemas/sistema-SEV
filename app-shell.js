@@ -71,15 +71,14 @@
           </div>
         </section>
         <section class="pending-panel" aria-labelledby="pendingPaymentsTitle">
-          <div class="settings-panel-head"><div><h2 id="pendingPaymentsTitle">Clientes com pagamento pendente</h2><p>Vendas aguardando o recebimento do cliente.</p></div><span class="demo-label">Dados demonstrativos</span></div>
-          <div class="pending-total"><span>Total a receber</span><strong>R$ 8.730</strong><small>3 clientes com pagamento em aberto</small></div>
+          <div class="settings-panel-head"><div><h2 id="pendingPaymentsTitle">Contas a receber</h2><p>Vendas a prazo aguardando o recebimento do cliente.</p></div><span class="local-label">Sincronizado com a API</span></div>
+          <div class="pending-total"><span>Total a receber</span><strong id="receivableTotal">R$ 0,00</strong><small id="receivableSummary">Carregando contas da empresa…</small></div>
           <section class="pending-chart" aria-label="Gráfico de valores pendentes por cliente">
             <div class="pending-chart-head"><strong>Valores por cliente</strong><span>Valor a receber</span></div>
-            <div class="pending-chart-row"><span>Mariana</span><div class="pending-chart-track"><span class="pending-chart-bar supplier" style="--bar-size:100%"></span></div><strong>R$ 4.250</strong></div>
-            <div class="pending-chart-row"><span>Lucas</span><div class="pending-chart-track"><span class="pending-chart-bar freight" style="--bar-size:40%"></span></div><strong>R$ 1.680</strong></div>
-            <div class="pending-chart-row"><span>Ana</span><div class="pending-chart-track"><span class="pending-chart-bar marketing" style="--bar-size:66%"></span></div><strong>R$ 2.800</strong></div>
+            <div id="receivableChart" aria-live="polite"></div>
           </section>
-          <div class="table-wrap"><table class="pending-table"><thead><tr><th>Cliente</th><th>Vencimento</th><th>Valor</th><th>Status</th></tr></thead><tbody><tr><td><strong>Mariana Costa</strong><small>Pedido #1042</small></td><td>30/07/2026</td><td>R$ 4.250</td><td><span class="badge out">Atrasado</span></td></tr><tr><td><strong>Lucas Mendes</strong><small>Pedido #1045</small></td><td>31/07/2026</td><td>R$ 1.680</td><td><span class="badge low">A vencer</span></td></tr><tr><td><strong>Ana Ribeiro</strong><small>Pedido #1049</small></td><td>05/08/2026</td><td>R$ 2.800</td><td><span class="badge ok">Agendado</span></td></tr></tbody></table></div>
+          <div class="table-wrap"><table class="pending-table"><thead><tr><th>Cliente</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody id="receivableTableBody"></tbody></table></div>
+          <p class="receivable-status" id="receivableStatus" role="status" aria-live="polite"></p>
         </section>`
     },
     vendas: {

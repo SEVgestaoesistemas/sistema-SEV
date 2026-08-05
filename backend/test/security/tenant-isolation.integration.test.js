@@ -343,3 +343,168 @@ test('sales keep customers, orders and stock movements isolated by organization'
     if (!app) await database.close();
   }
 });
+
+test('accounts receivable are created from pending sales and remain isolated by organization', { skip: !enabled }, async () => {
+  const config = loadConfig();
+  assert.ok(config.databaseUrl, 'DATABASE_URL is required for the accounts receivable isolation test.');
+
+  const database = createDatabase(config);
+  let app;
+  let fixture;
+  try {
+    fixture = await database.transaction(async transaction => {
+      const organizationA = await insertOrganization(transaction, 'Receivable Company A');
+      const organizationB = await insertOrganization(transaction, 'Receivable Company B');
+      const passwordHash = await hashPassword('TemporaryTestPassword2026');
+      const userA = await transaction.query(
+        'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id',
+        ['Receivable User A', `receivable-a-${randomUUID()}@test.invalid`, passwordHash]
+      );
+      const userB = await transaction.query(
+        'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id',
+        ['Receivable User B', `receivable-b-${randomUUID()}@test.invalid`, passwordHash]
+      );
+      await transaction.query(
+        "INSERT INTO organization_memberships (organization_id, user_id, role) VALUES ($1, $2, 'owner'), ($3, $4, 'owner')",
+        [organizationA, userA.rows[0].id, organizationB, userB.rows[0].id]
+      );
+      const productA = await transaction.query(
+        "INSERT INTO products (organization_id, name, quantity, minimum_quantity, unit_price_cents) VALUES ($1, 'Product Receivable A', 4, 0, 2500) RETURNING id",
+        [organizationA]
+      );
+      const customerB = await transaction.query(
+        "INSERT INTO customers (organization_id, name) VALUES ($1, 'Customer Receivable B') RETURNING id",
+        [organizationB]
+      );
+      const saleB = await transaction.query(
+        `INSERT INTO sales (organization_id, customer_id, payment_method, payment_status, due_date, total_cents, created_by_user_id)
+         VALUES ($1, $2, 'boleto', 'pending', DATE '2035-06-20', 3600, $3) RETURNING id`,
+        [organizationB, customerB.rows[0].id, userB.rows[0].id]
+      );
+      const receivableB = await transaction.query(
+        'SELECT id FROM accounts_receivable WHERE sale_id = $1',
+        [saleB.rows[0].id]
+      );
+      assert.equal(receivableB.rowCount, 1, 'a pending sale must automatically create one receivable');
+      const sessionA = await createStoredSession(transaction, {
+        userId: userA.rows[0].id,
+        organizationId: organizationA,
+        config
+      });
+      return {
+        organizationA,
+        organizationB,
+        userAId: userA.rows[0].id,
+        userIds: [userA.rows[0].id, userB.rows[0].id],
+        productAId: productA.rows[0].id,
+        customerBId: customerB.rows[0].id,
+        receivableBId: receivableB.rows[0].id,
+        sessionA
+      };
+    });
+
+    app = await buildApp({ config: { ...config, environment: 'test' }, db: database, logger: false });
+    const headers = {
+      cookie: `${sessionCookieName}=${fixture.sessionA.token}`,
+      'x-csrf-token': fixture.sessionA.csrfToken
+    };
+
+    const customerCreated = await app.inject({
+      method: 'POST',
+      url: '/api/v1/customers',
+      headers,
+      payload: { name: 'Customer Receivable A' }
+    });
+    assert.equal(customerCreated.statusCode, 201);
+    const pendingSale = await app.inject({
+      method: 'POST',
+      url: '/api/v1/sales',
+      headers,
+      payload: {
+        customerId: customerCreated.json().customer.id,
+        paymentMethod: 'boleto',
+        paymentStatus: 'pending',
+        dueDate: '2035-06-20',
+        items: [{ productId: fixture.productAId, quantity: 1, unitPriceCents: 2500 }]
+      }
+    });
+    assert.equal(pendingSale.statusCode, 201);
+    assert.equal(pendingSale.json().sale.paymentStatus, 'pending');
+
+    const persistedReceivable = await database.query(
+      `SELECT id, organization_id, sale_id, customer_id, amount_cents, due_date, status, paid_at
+         FROM accounts_receivable
+        WHERE sale_id = $1`,
+      [pendingSale.json().sale.id]
+    );
+    assert.equal(persistedReceivable.rowCount, 1);
+    assert.equal(persistedReceivable.rows[0].organization_id, fixture.organizationA);
+    assert.equal(persistedReceivable.rows[0].customer_id, customerCreated.json().customer.id);
+    assert.equal(Number(persistedReceivable.rows[0].amount_cents), 2500);
+    assert.equal(persistedReceivable.rows[0].status, 'pending');
+    const receivableAId = persistedReceivable.rows[0].id;
+
+    const list = await app.inject({ method: 'GET', url: '/api/v1/receivables', headers });
+    assert.equal(list.statusCode, 200);
+    assert.equal(list.json().receivables.some(receivable => receivable.id === fixture.receivableBId), false);
+    const ownReceivable = list.json().receivables.find(receivable => receivable.id === receivableAId);
+    assert.ok(ownReceivable);
+    assert.equal(ownReceivable.status, 'upcoming');
+
+    const dashboardBeforePayment = await app.inject({ method: 'GET', url: '/api/v1/receivables/dashboard', headers });
+    assert.equal(dashboardBeforePayment.statusCode, 200);
+    assert.equal(dashboardBeforePayment.json().dashboard.pendingCents, 2500);
+    assert.equal(dashboardBeforePayment.json().dashboard.pendingCount, 1);
+    assert.equal(dashboardBeforePayment.json().dashboard.customers[0].customerName, 'Customer Receivable A');
+
+    const tenantDatabase = database.forTenant({ organizationId: fixture.organizationA, userId: fixture.userAId });
+    const foreignDirectRead = await tenantDatabase.query('SELECT id FROM accounts_receivable WHERE id = $1', [fixture.receivableBId]);
+    assert.equal(foreignDirectRead.rowCount, 0);
+    const foreignDirectUpdate = await tenantDatabase.query(
+      'UPDATE accounts_receivable SET amount_cents = amount_cents WHERE id = $1',
+      [fixture.receivableBId]
+    );
+    assert.equal(foreignDirectUpdate.rowCount, 0);
+
+    const foreignPayment = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/receivables/${fixture.receivableBId}/mark-paid`,
+      headers
+    });
+    assert.equal(foreignPayment.statusCode, 404);
+
+    const payment = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/receivables/${receivableAId}/mark-paid`,
+      headers
+    });
+    assert.equal(payment.statusCode, 200);
+    assert.equal(payment.json().receivable.status, 'paid');
+
+    const settled = await database.query(
+      `SELECT receivable.status, receivable.paid_at, sale.payment_status, sale.due_date
+         FROM accounts_receivable receivable
+         JOIN sales sale ON sale.id = receivable.sale_id
+        WHERE receivable.id = $1`,
+      [receivableAId]
+    );
+    assert.equal(settled.rows[0].status, 'paid');
+    assert.ok(settled.rows[0].paid_at);
+    assert.equal(settled.rows[0].payment_status, 'paid');
+    assert.equal(settled.rows[0].due_date, null);
+
+    const dashboardAfterPayment = await app.inject({ method: 'GET', url: '/api/v1/receivables/dashboard', headers });
+    assert.equal(dashboardAfterPayment.statusCode, 200);
+    assert.equal(dashboardAfterPayment.json().dashboard.pendingCents, 0);
+    assert.equal(dashboardAfterPayment.json().dashboard.pendingCount, 0);
+  } finally {
+    if (fixture) {
+      await database.transaction(async transaction => {
+        await transaction.query('DELETE FROM organizations WHERE id = ANY($1::uuid[])', [[fixture.organizationA, fixture.organizationB]]);
+        await transaction.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [fixture.userIds]);
+      });
+    }
+    await app?.close();
+    if (!app) await database.close();
+  }
+});

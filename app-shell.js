@@ -57,18 +57,14 @@
           <div class="table-wrap"><table class="imported-expenses-table"><thead><tr><th>Fornecedor</th><th>Nota fiscal</th><th>Categoria</th><th>Vencimento</th><th>Valor</th></tr></thead><tbody id="importedExpensesBody"></tbody></table></div>
         </section>
         <section class="payment-panel" aria-labelledby="paymentTitle">
-          <div class="settings-panel-head"><div><h2 id="paymentTitle">Vendas por pagamento</h2><p>Distribuição das vendas no período selecionado.</p></div><span class="demo-label">Dados demonstrativos</span></div>
+          <div class="settings-panel-head"><div><h2 id="paymentTitle">Vendas por pagamento</h2><p>Distribuição das vendas registradas pela sua empresa.</p></div><span class="local-label">Sincronizado com a API</span></div>
           <div class="payment-chart-layout">
-            <div class="payment-donut" role="img" aria-label="Vendas por pagamento: Pix 50%, Cartão 42%, Boleto 7% e Outros 1%.">
-              <div class="payment-center"><span id="paymentMethod">Pix</span><strong id="paymentAmount">R$ 3.475</strong><small id="paymentPercent">50% das vendas</small></div>
+            <div class="payment-donut" id="paymentDonut" role="img" aria-label="Carregando distribuição das vendas por pagamento.">
+              <div class="payment-center"><span id="paymentMethod">Carregando</span><strong id="paymentAmount">R$ 0,00</strong><small id="paymentPercent">Aguarde um instante</small></div>
             </div>
-            <div class="payment-legend" aria-label="Métodos de pagamento">
-              <button class="payment-legend-item active" type="button" data-payment="pix" aria-pressed="true"><span class="payment-dot pix"></span><span>Pix</span><strong>50%</strong></button>
-              <button class="payment-legend-item" type="button" data-payment="card" aria-pressed="false"><span class="payment-dot card"></span><span>Cartão</span><strong>42%</strong></button>
-              <button class="payment-legend-item" type="button" data-payment="boleto" aria-pressed="false"><span class="payment-dot boleto"></span><span>Boleto</span><strong>7%</strong></button>
-              <button class="payment-legend-item" type="button" data-payment="other" aria-pressed="false"><span class="payment-dot other"></span><span>Outros</span><strong>1%</strong></button>
-            </div>
+            <div class="payment-legend" id="paymentLegend" aria-label="Métodos de pagamento"></div>
           </div>
+          <p class="payment-status" id="paymentStatus" role="status" aria-live="polite"></p>
         </section>
         <section class="pending-panel" aria-labelledby="pendingPaymentsTitle">
           <div class="settings-panel-head"><div><h2 id="pendingPaymentsTitle">Contas a receber</h2><p>Vendas a prazo aguardando o recebimento do cliente.</p></div><span class="local-label">Sincronizado com a API</span></div>
@@ -353,34 +349,6 @@
         settingsStatus.textContent = 'Não foi possível salvar as configurações neste navegador.';
       }
     });
-  }
-
-  if (pageId === 'financeiro') {
-    const paymentData = {
-      pix: { label: 'Pix', amount: 'R$ 3.475', percent: '50%' },
-      card: { label: 'Cartão', amount: 'R$ 2.919', percent: '42%' },
-      boleto: { label: 'Boleto', amount: 'R$ 486', percent: '7%' },
-      other: { label: 'Outros', amount: 'R$ 70', percent: '1%' }
-    };
-    const paymentMethod = document.getElementById('paymentMethod');
-    const paymentAmount = document.getElementById('paymentAmount');
-    const paymentPercent = document.getElementById('paymentPercent');
-    const paymentButtons = document.querySelectorAll('[data-payment]');
-    paymentButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        const payment = paymentData[button.dataset.payment];
-        if (!payment) return;
-        paymentMethod.textContent = payment.label;
-        paymentAmount.textContent = payment.amount;
-        paymentPercent.textContent = `${payment.percent} das vendas`;
-        paymentButtons.forEach(item => {
-          const isSelected = item === button;
-          item.classList.toggle('active', isSelected);
-          item.setAttribute('aria-pressed', String(isSelected));
-        });
-      });
-    });
-
   }
 
   if (pageId === 'estoque') {

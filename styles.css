@@ -655,7 +655,7 @@ tbody tr:hover{ background: var(--surface-soft); }
 .payment-chart-layout{ display:flex; align-items:center; justify-content:center; gap:52px; padding:4px 0 2px; }
 .payment-donut{
   position:relative; width:220px; height:220px; flex-shrink:0; border-radius:50%;
-  background:conic-gradient(var(--brand) 0 50%, var(--info) 50% 92%, var(--warning) 92% 99%, var(--danger) 99% 100%);
+  background:var(--payment-donut, conic-gradient(var(--border) 0 100%));
 }
 .payment-donut::before{
   content:""; position:absolute; inset:44px; border-radius:50%; background:var(--surface);
@@ -674,7 +674,11 @@ tbody tr:hover{ background: var(--surface-soft); }
 .payment-legend-item:hover, .payment-legend-item.active{ border-color:var(--border); background:var(--surface-soft); color:var(--ink); }
 .payment-legend-item strong{ font-size:12px; }
 .payment-dot{ width:9px; height:9px; border-radius:50%; }
+.payment-dot{ background:var(--payment-color, var(--brand)); }
 .payment-dot.pix{ background:var(--brand); }.payment-dot.card{ background:var(--info); }.payment-dot.boleto{ background:var(--warning); }.payment-dot.other{ background:var(--danger); }
+.payment-status{ min-height:18px; margin:14px 0 0; color:var(--success); font-size:12px; font-weight:600; }
+.payment-status.error{ color:var(--danger); }
+.payment-empty{ margin:0; color:var(--ink-faint); font-size:12px; line-height:1.5; }
 
 /* ----------------------------------------------------- invoice import demo */
 .invoice-import-panel, .imported-expenses-panel{

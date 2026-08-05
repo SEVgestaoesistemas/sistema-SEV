@@ -74,7 +74,7 @@ export const registerSupportRoutes = async app => {
       userLimit: request.server.config.supportChatUserDailyLimit,
       organizationLimit: request.server.config.supportChatOrganizationDailyLimit
     });
-    const generated = await request.server.geminiChat(message);
+    const generated = await request.server.geminiChat(message, request.log);
     const answer = !generated.inScope ? outsideScopeReply : generated.needsHuman ? humanSupportReply : generated.answer;
 
     await request.tenantDb.transaction(async transaction => {

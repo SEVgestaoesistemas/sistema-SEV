@@ -134,7 +134,7 @@
       content: `
         <section class="module-hero"><p class="eyebrow">Catálogo e inventário</p><h1>Estoque</h1><p>Cadastre produtos e acompanhe níveis mínimos para reposição.</p></section>
         <section class="module-grid stock-summary-grid"><article class="module-card"><span>Produtos cadastrados</span><strong id="stockProductCount">0</strong><small>Itens diferentes no catálogo</small></article><article class="module-card"><span>Estoque baixo</span><strong id="stockLowCount">0</strong><small>Produtos que exigem reposição</small></article><article class="module-card"><span>Esgotados</span><strong id="stockOutCount">0</strong><small>Produtos sem unidades disponíveis</small></article></section>
-        <section class="stock-panel" aria-labelledby="addProductTitle"><div class="settings-panel-head"><div><h2 id="addProductTitle">Cadastrar produto</h2><p>O cadastro é salvo com segurança no estoque da sua empresa.</p></div></div><form class="stock-form" id="stockForm"><label class="field"><span>Nome do produto</span><input name="productName" type="text" minlength="3" maxlength="100" required></label><label class="field"><span>Quantidade atual</span><input name="productQuantity" type="number" min="0" max="1000000" step="1" required inputmode="numeric"></label><label class="field"><span>Estoque mínimo</span><input name="productMinimum" type="number" min="0" max="1000000" step="1" required inputmode="numeric"></label><button class="primary-button" type="submit">Adicionar produto</button></form><p class="stock-status" id="stockStatus" role="status" aria-live="polite"></p></section>
+        <section class="stock-panel" id="stockCreatePanel" aria-labelledby="addProductTitle"><div class="settings-panel-head"><div><h2 id="addProductTitle">Cadastrar produto</h2><p>O cadastro é salvo com segurança no estoque da sua empresa.</p></div></div><form class="stock-form" id="stockForm"><label class="field"><span>Nome do produto</span><input name="productName" type="text" minlength="3" maxlength="100" required></label><label class="field"><span>Quantidade atual</span><input name="productQuantity" type="number" min="0" max="1000000" step="1" required inputmode="numeric"></label><label class="field"><span>Estoque mínimo</span><input name="productMinimum" type="number" min="0" max="1000000" step="1" required inputmode="numeric"></label><button class="primary-button" type="submit">Adicionar produto</button></form><p class="stock-status" id="stockStatus" role="status" aria-live="polite"></p></section>
         <section class="stock-panel" aria-labelledby="catalogTitle"><div class="stock-toolbar"><div><h2 id="catalogTitle">Produtos cadastrados</h2><p id="stockListSummary">0 produtos no catálogo</p></div><div class="stock-toolbar-controls"><label class="stock-search"><span class="sr-only">Buscar produto</span><input id="stockSearch" type="search" placeholder="Buscar produto"></label><div class="tabs" aria-label="Filtros de estoque"><button class="tab active" type="button" data-stock-filter="all" aria-pressed="true">Todos</button><button class="tab" type="button" data-stock-filter="critical" aria-pressed="false">Críticos</button></div></div></div><div class="table-wrap"><table class="stock-table"><thead><tr><th>Produto</th><th>Quantidade</th><th>Mínimo</th><th>Status</th></tr></thead><tbody id="stockTableBody"></tbody></table></div></section>`
     },
     relatorios: {
@@ -387,6 +387,7 @@
 
   if (pageId === 'estoque') {
     const stockForm = document.getElementById('stockForm');
+    const stockCreatePanel = document.getElementById('stockCreatePanel');
     const stockStatus = document.getElementById('stockStatus');
     const stockSearch = document.getElementById('stockSearch');
     const stockTableBody = document.getElementById('stockTableBody');
@@ -434,6 +435,7 @@
       try {
         const user = await window.SevAuth.ready;
         if (!user) return;
+        stockCreatePanel.hidden = !['owner', 'admin', 'inventory'].includes(user.organization?.role);
         products = await window.SevApi.getProducts();
         renderStock();
         showStockStatus('');

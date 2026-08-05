@@ -139,6 +139,10 @@
       method: 'POST',
       body: account
     })),
+    acceptInvitation: async invitation => applyAuthenticatedSession(await request('/auth/invitations/accept', {
+      method: 'POST',
+      body: invitation
+    })),
     logout: async () => {
       try {
         await request('/auth/logout', { method: 'POST', csrf: true });
@@ -229,6 +233,7 @@
       csrf: true
     })).sale,
     getSalesDashboard: async () => (await request('/sales/dashboard')).dashboard,
+    getFinanceDashboard: async () => (await request('/finance/dashboard')).dashboard,
     getDashboardOverview: async () => (await request('/dashboard/overview')).dashboard,
     downloadReport: async (report, period) => {
       const suffix = period?.startDate || period?.endDate

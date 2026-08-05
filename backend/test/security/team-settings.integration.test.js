@@ -85,8 +85,24 @@ test('equipe e configurações permanecem isoladas por organização', { skip: !
     assert.equal(invitation.statusCode, 201);
     assert.match(
       invitation.json().invitation.inviteLink,
-      /^https:\/\/sevgestaoesistemas\.github\.io\/sistema-SEV\/#invite=/
+      /^https:\/\/sevgestaoesistemas\.github\.io\/sistema-SEV\/aceitar-convite\.html#invite=/
     );
+
+    const inviteToken = new URL(invitation.json().invitation.inviteLink).hash.replace('#invite=', '');
+    const incompleteAcceptance = await app.inject({
+      method: 'POST', url: '/api/v1/auth/invitations/accept',
+      payload: { token: inviteToken, name: 'Invited Person' }
+    });
+    assert.equal(incompleteAcceptance.statusCode, 400);
+    assert.equal(incompleteAcceptance.headers['set-cookie'], undefined);
+
+    const acceptedInvitation = await app.inject({
+      method: 'POST', url: '/api/v1/auth/invitations/accept',
+      payload: { token: inviteToken, name: 'Invited Person', password: 'SecureInvitation2026' }
+    });
+    assert.equal(acceptedInvitation.statusCode, 201);
+    assert.ok(acceptedInvitation.headers['set-cookie']);
+    fixture.userIds.push(acceptedInvitation.json().user.id);
 
     const updatedRole = await app.inject({
       method: 'PATCH', url: `/api/v1/team/members/${fixture.memberAId}`, headers: headersA, payload: { role: 'finance' }

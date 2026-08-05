@@ -11,8 +11,23 @@ const productSchema = z.object({
   unitPriceCents: z.coerce.number().int().min(0).max(1000000000000).default(0)
 });
 
-const inventoryReadRoles = ['owner', 'admin', 'inventory', 'operator'];
+const inventoryReadRoles = ['owner', 'admin', 'finance', 'inventory', 'operator'];
 const inventoryWriteRoles = ['owner', 'admin', 'inventory'];
+
+const publicProduct = (product, { redactFinancialValues = false } = {}) => {
+  const base = {
+    id: product.id,
+    name: product.name,
+    sku: product.sku,
+    quantity: product.quantity,
+    minimumQuantity: product.minimumQuantity,
+    createdAt: product.createdAt,
+    updatedAt: product.updatedAt
+  };
+  return redactFinancialValues
+    ? { ...base, financialValuesRedacted: true }
+    : { ...base, unitPriceCents: Number(product.unitPriceCents), financialValuesRedacted: false };
+};
 
 export const registerProductRoutes = async app => {
   app.get('/products', { preHandler: [requireAuth, requireAccountAccess, requireRoles(inventoryReadRoles)] }, async request => {
@@ -23,7 +38,8 @@ export const registerProductRoutes = async app => {
         ORDER BY name ASC`,
       [request.auth.organization.id]
     );
-    return { products: result.rows };
+    const redactFinancialValues = request.auth.organization.role === 'finance';
+    return { products: result.rows.map(product => publicProduct(product, { redactFinancialValues })) };
   });
 
   app.post('/products', {
@@ -64,7 +80,7 @@ export const registerProductRoutes = async app => {
         entityId: created.id,
         metadata: { quantity: created.quantity, minimumQuantity: created.minimumQuantity }
       });
-      return created;
+      return publicProduct(created);
     });
     return reply.code(201).send({ product });
   });

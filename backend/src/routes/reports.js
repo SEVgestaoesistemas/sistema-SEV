@@ -17,8 +17,8 @@ const periodSchema = z.object({
 });
 
 const reportRoles = {
-  sales: ['owner', 'admin', 'finance', 'operator'],
-  stock: ['owner', 'admin', 'inventory', 'operator'],
+  sales: ['owner', 'admin', 'operator'],
+  stock: ['owner', 'admin', 'finance', 'inventory', 'operator'],
   expenses: ['owner', 'admin', 'finance'],
   receivables: ['owner', 'admin', 'finance']
 };

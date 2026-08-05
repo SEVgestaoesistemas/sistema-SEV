@@ -44,7 +44,7 @@ export const createInvitation = async (db, payload, actor, config) => {
     });
 
     const baseUrl = config.frontendUrl;
-    return { ...invitation, inviteLink: `${baseUrl}/#invite=${token}` };
+    return { ...invitation, inviteLink: `${baseUrl}/aceitar-convite.html#invite=${token}` };
   });
 };
 

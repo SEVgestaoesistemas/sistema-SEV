@@ -3,6 +3,13 @@
   if (document.body.dataset.page !== 'vendas' || !window.SevApi || !window.SevAuth) return;
 
   const money = cents => (Number(cents || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const financialValue = (cents, redacted) => redacted
+    ? '<span class="financial-value-blurred">R$ ••••</span>'
+    : money(cents);
+  const setFinancialValue = (element, cents, redacted) => {
+    element.textContent = redacted ? 'R$ ••••' : money(cents);
+    element.classList.toggle('financial-value-blurred', Boolean(redacted));
+  };
   const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
   })[character]);
@@ -71,13 +78,15 @@
 
   const renderSummary = dashboard => {
     const summary = dashboard.summary;
+    const redacted = Boolean(dashboard.financialValuesRedacted);
     document.getElementById('salesOrderCount').textContent = String(summary.orderCount);
     document.getElementById('salesOrderNote').textContent = `${summary.orderCount === 1 ? '1 pedido registrado' : `${summary.orderCount} pedidos registrados`} no mês`;
-    document.getElementById('salesRevenue').textContent = money(summary.revenueCents);
-    document.getElementById('salesAverageTicket').textContent = money(summary.averageTicketCents);
-    document.getElementById('salesPendingNote').textContent = summary.pendingCents > 0
+    setFinancialValue(document.getElementById('salesRevenue'), summary.revenueCents, redacted);
+    setFinancialValue(document.getElementById('salesAverageTicket'), summary.averageTicketCents, redacted);
+    document.getElementById('salesPendingNote').textContent = redacted ? 'Valor a receber oculto' : summary.pendingCents > 0
       ? `${money(summary.pendingCents)} a receber`
       : 'Nenhuma venda pendente';
+    document.getElementById('salesPendingNote').classList.toggle('financial-value-blurred', redacted);
   };
 
   const renderCustomerOptions = () => {
@@ -117,7 +126,7 @@
   const renderSales = () => {
     document.getElementById('salesListSummary').textContent = `${sales.length} pedido${sales.length === 1 ? '' : 's'} registrado${sales.length === 1 ? '' : 's'}`;
     salesTableBody.innerHTML = sales.length ? sales.map(sale => `
-      <tr><td><strong>#${sale.orderNumber}</strong><small>${sale.itemCount} item${sale.itemCount === 1 ? '' : 'ns'}</small></td><td>${escapeHtml(sale.customerName)}</td><td>${escapeHtml(paymentLabels[sale.paymentMethod] || sale.paymentMethod)}</td><td>${money(sale.totalCents)}</td><td>${formatDate(sale.createdAt)}</td><td><span class="badge ${sale.paymentStatus === 'paid' ? 'ok' : 'low'}">${paymentStatusLabel(sale.paymentStatus)}</span></td></tr>`
+      <tr><td><strong>#${sale.orderNumber}</strong><small>${sale.itemCount} item${sale.itemCount === 1 ? '' : 'ns'}</small></td><td>${escapeHtml(sale.customerName)}</td><td>${escapeHtml(paymentLabels[sale.paymentMethod] || sale.paymentMethod)}</td><td>${financialValue(sale.totalCents, sale.financialValuesRedacted)}</td><td>${formatDate(sale.createdAt)}</td><td><span class="badge ${sale.paymentStatus === 'paid' ? 'ok' : 'low'}">${paymentStatusLabel(sale.paymentStatus)}</span></td></tr>`
     ).join('') : '<tr><td class="empty-table" colspan="6">Nenhum pedido registrado.</td></tr>';
   };
 

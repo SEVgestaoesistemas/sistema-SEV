@@ -6,6 +6,18 @@
   let currentUser = null;
   let redirecting = false;
   const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+  const pageRoles = {
+    'financeiro.html': ['owner', 'admin', 'finance'],
+    'equipe.html': ['owner', 'admin'],
+    'configuracoes.html': ['owner', 'admin']
+  };
+
+  const applyNavigationPermissions = role => {
+    document.querySelectorAll('a[href]').forEach(link => {
+      const linkedPage = new URL(link.href, window.location.href).pathname.split('/').pop();
+      if (pageRoles[linkedPage]) link.hidden = !pageRoles[linkedPage].includes(role);
+    });
+  };
 
   const redirectToLogin = () => {
     if (redirecting) return;
@@ -37,6 +49,13 @@
   const ready = window.SevApi.getCurrentUser()
     .then(({ user }) => {
       currentUser = user;
+      const role = user.organization?.role;
+      applyNavigationPermissions(role);
+      if (pageRoles[currentPage] && !pageRoles[currentPage].includes(role)) {
+        redirecting = true;
+        window.location.replace('index.html');
+        return null;
+      }
       if (user.passwordChangeRequired) {
         redirectToPasswordChange();
         return null;

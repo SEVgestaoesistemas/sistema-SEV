@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aceitar convite · SEV Gestão &amp; Sistemas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="login-page">
+  <main class="login-layout">
+    <section class="login-card" aria-labelledby="invitationTitle">
+      <img class="login-logo" src="assets/sev-logo.jpeg" alt="SEV Gestão &amp; Sistemas">
+      <div class="login-heading">
+        <p class="eyebrow">Convite para a equipe</p>
+        <h1 id="invitationTitle">Crie sua senha</h1>
+        <p>Defina uma senha pessoal para ativar seu acesso à empresa.</p>
+      </div>
+      <form class="login-form password-change-form" id="invitationForm" hidden>
+        <label class="field"><span>Nome completo</span><input name="name" type="text" autocomplete="name" minlength="3" maxlength="100" required></label>
+        <label class="field"><span>Crie uma senha</span><input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label>
+        <small>Use ao menos 12 caracteres, incluindo letra maiúscula, minúscula e número.</small>
+        <label class="field"><span>Confirmar senha</span><input name="confirmPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label>
+        <p class="login-status" id="invitationStatus" role="status" aria-live="polite"></p>
+        <button class="primary-button" type="submit" data-label="Aceitar convite e entrar">Aceitar convite e entrar</button>
+      </form>
+      <p class="login-status error" id="invalidInvitationStatus" role="alert" hidden>Este link de convite é inválido. Peça um novo convite ao administrador da empresa.</p>
+    </section>
+  </main>
+  <script src="api.js"></script>
+  <script src="accept-invitation.js"></script>
+</body>
+</html>

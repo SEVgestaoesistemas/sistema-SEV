@@ -4,8 +4,9 @@ import { recordAudit } from '../audit.js';
 import { requireAccountAccess, requireAuth, requireCsrf, requireRoles } from '../auth/middleware.js';
 import { dateSchema, emailSchema, validate } from './validation.js';
 
-const commercialReadRoles = ['owner', 'admin', 'operator', 'finance'];
+const commercialReadRoles = ['owner', 'admin', 'operator', 'finance', 'inventory'];
 const commercialWriteRoles = ['owner', 'admin', 'operator'];
+const financeRoles = ['owner', 'admin', 'finance'];
 const maximumSaleCents = 1000000000000n;
 const paymentMethods = ['pix', 'card', 'cash', 'boleto', 'bank_transfer', 'other'];
 
@@ -68,7 +69,7 @@ const publicCustomer = row => ({
   createdAt: row.createdAt
 });
 
-const publicSale = row => ({
+const publicSale = (row, { redactFinancialValues = false } = {}) => ({
   id: row.id,
   orderNumber: Number(row.orderNumber),
   customerId: row.customerId,
@@ -76,9 +77,32 @@ const publicSale = row => ({
   paymentMethod: row.paymentMethod,
   paymentStatus: row.paymentStatus,
   dueDate: row.dueDate || null,
-  totalCents: moneyNumber(row.totalCents),
+  ...(redactFinancialValues
+    ? { financialValuesRedacted: true }
+    : { totalCents: moneyNumber(row.totalCents), financialValuesRedacted: false }),
   itemCount: Number(row.itemCount || 0),
   createdAt: row.createdAt
+});
+
+const redactFinancialDashboard = dashboard => ({
+  financialValuesRedacted: true,
+  summary: {
+    ...dashboard.summary,
+    revenueCents: null,
+    averageTicketCents: null,
+    pendingCents: null
+  },
+  monthly: dashboard.monthly.map(month => ({
+    ...month,
+    revenueCents: null,
+    expenseCents: null
+  })),
+  paymentMethods: dashboard.paymentMethods.map(payment => ({
+    paymentMethod: payment.paymentMethod,
+    orderCount: payment.orderCount,
+    financialValuesRedacted: true
+  })),
+  recentSales: dashboard.recentSales.map(sale => publicSale(sale, { redactFinancialValues: true }))
 });
 
 const validateSaleTotal = items => {
@@ -250,13 +274,19 @@ export const registerSalesRoutes = async app => {
     return reply.code(201).send({ customer });
   });
 
-  app.get('/sales/dashboard', { preHandler: [requireAuth, requireAccountAccess, requireRoles(commercialReadRoles)] }, async request => (
-    { dashboard: await loadDashboard(request.tenantDb, request.auth.organization.id) }
-  ));
+  app.get('/sales/dashboard', { preHandler: [requireAuth, requireAccountAccess, requireRoles(commercialReadRoles)] }, async request => {
+    const dashboard = await loadDashboard(request.tenantDb, request.auth.organization.id);
+    return { dashboard: request.auth.organization.role === 'finance' ? redactFinancialDashboard(dashboard) : dashboard };
+  });
 
-  app.get('/dashboard/overview', { preHandler: [requireAuth, requireAccountAccess] }, async request => (
-    { dashboard: await loadDashboard(request.tenantDb, request.auth.organization.id) }
-  ));
+  app.get('/finance/dashboard', {
+    preHandler: [requireAuth, requireAccountAccess, requireRoles(financeRoles)]
+  }, async request => ({ dashboard: await loadDashboard(request.tenantDb, request.auth.organization.id) }));
+
+  app.get('/dashboard/overview', { preHandler: [requireAuth, requireAccountAccess] }, async request => {
+    const dashboard = await loadDashboard(request.tenantDb, request.auth.organization.id);
+    return { dashboard: request.auth.organization.role === 'finance' ? redactFinancialDashboard(dashboard) : dashboard };
+  });
 
   app.get('/sales', { preHandler: [requireAuth, requireAccountAccess, requireRoles(commercialReadRoles)] }, async request => {
     const query = validate(saleQuerySchema, request.query);
@@ -276,7 +306,8 @@ export const registerSalesRoutes = async app => {
         LIMIT $2`,
       values
     );
-    return { sales: result.rows.map(publicSale) };
+    const redactFinancialValues = request.auth.organization.role === 'finance';
+    return { sales: result.rows.map(row => publicSale(row, { redactFinancialValues })) };
   });
 
   app.post('/sales', {

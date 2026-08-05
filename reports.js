@@ -19,6 +19,12 @@
     expenses: 'Baixar CSV de despesas',
     receivables: 'Baixar CSV de contas'
   };
+  const reportRoles = {
+    sales: ['owner', 'admin', 'operator'],
+    stock: ['owner', 'admin', 'finance', 'inventory', 'operator'],
+    expenses: ['owner', 'admin', 'finance'],
+    receivables: ['owner', 'admin', 'finance']
+  };
 
   const setStatus = (message = '', isError = false) => {
     status.textContent = message;
@@ -33,6 +39,14 @@
     }
     return true;
   };
+
+  window.SevAuth?.ready.then(user => {
+    if (!user) return;
+    const role = user.organization?.role;
+    buttons.forEach(button => {
+      button.closest('.report-card').hidden = !reportRoles[button.dataset.report].includes(role);
+    });
+  });
 
   buttons.forEach(button => {
     button.addEventListener('click', async () => {

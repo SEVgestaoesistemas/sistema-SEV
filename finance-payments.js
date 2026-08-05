@@ -88,7 +88,7 @@
     try {
       const user = await window.SevAuth.ready;
       if (!user) return;
-      const dashboard = await window.SevApi.getSalesDashboard();
+      const dashboard = await window.SevApi.getFinanceDashboard();
       payments = (dashboard.paymentMethods || [])
         .filter(payment => Number(payment.totalCents || 0) > 0)
         .sort((left, right) => Number(right.totalCents || 0) - Number(left.totalCents || 0));

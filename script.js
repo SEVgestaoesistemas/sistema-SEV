@@ -20,6 +20,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMenu(); });
 
   const money = cents => (Number(cents || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const setFinancialValue = (element, cents, redacted) => {
+    element.textContent = redacted ? 'R$ ••••' : money(cents);
+    element.classList.toggle('financial-value-blurred', Boolean(redacted));
+  };
   const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
   })[character]);
@@ -58,6 +62,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const revenueCanvas = document.getElementById('revenueChart');
     if (revenueCanvas) {
+      revenueCanvas.closest('.panel')?.classList.toggle('financial-panel-redacted', Boolean(dashboard.financialValuesRedacted));
+      if (dashboard.financialValuesRedacted) {
+        revenueChart?.destroy();
+      }
       revenueChart?.destroy();
       const gradient = revenueCanvas.getContext('2d').createLinearGradient(0, 0, 0, 220);
       gradient.addColorStop(0, 'rgba(91,78,242,0.22)');
@@ -97,10 +105,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const renderDashboard = dashboard => {
     const summary = dashboard.summary;
-    document.getElementById('dashboardRevenue').textContent = money(summary.revenueCents);
+    setFinancialValue(document.getElementById('dashboardRevenue'), summary.revenueCents, dashboard.financialValuesRedacted);
     document.getElementById('dashboardOrders').textContent = String(summary.orderCount);
     document.getElementById('dashboardStockUnits').textContent = String(summary.unitsInStock);
-    document.getElementById('dashboardAverageTicket').textContent = money(summary.averageTicketCents);
+    setFinancialValue(document.getElementById('dashboardAverageTicket'), summary.averageTicketCents, dashboard.financialValuesRedacted);
     document.getElementById('salesNavBadge').textContent = String(summary.orderCount);
     const availableProducts = summary.productCount - summary.outOfStockCount;
     const availability = summary.productCount ? Math.round((availableProducts / summary.productCount) * 100) : 0;

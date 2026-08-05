@@ -33,7 +33,7 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
-        value: gemini-2.5-flash-lite
+        value: gemini-3.1-flash-lite
       - key: SUPPORT_CHAT_USER_DAILY_LIMIT
         value: "15"
       - key: SUPPORT_CHAT_ORGANIZATION_DAILY_LIMIT

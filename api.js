@@ -165,6 +165,20 @@
       body: product,
       csrf: true
     })).product,
+    getCustomers: async parameters => (await request(`/customers${queryString(parameters)}`)).customers,
+    createCustomer: async customer => (await request('/customers', {
+      method: 'POST',
+      body: customer,
+      csrf: true
+    })).customer,
+    getSales: async parameters => (await request(`/sales${queryString(parameters)}`)).sales,
+    createSale: async sale => (await request('/sales', {
+      method: 'POST',
+      body: sale,
+      csrf: true
+    })).sale,
+    getSalesDashboard: async () => (await request('/sales/dashboard')).dashboard,
+    getDashboardOverview: async () => (await request('/dashboard/overview')).dashboard,
     getExpenses: async parameters => (await request(`/expenses${queryString(parameters)}`)).expenses,
     createExpense: async expense => (await request('/expenses', {
       method: 'POST',

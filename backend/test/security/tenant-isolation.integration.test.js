@@ -199,3 +199,147 @@ test('authenticated API requests remain isolated even when given another organiz
     if (!app) await database.close();
   }
 });
+
+test('sales keep customers, orders and stock movements isolated by organization', { skip: !enabled }, async () => {
+  const config = loadConfig();
+  assert.ok(config.databaseUrl, 'DATABASE_URL is required for the sales isolation test.');
+
+  const database = createDatabase(config);
+  let app;
+  let fixture;
+  try {
+    fixture = await database.transaction(async transaction => {
+      const organizationA = await insertOrganization(transaction, 'Sales Company A');
+      const organizationB = await insertOrganization(transaction, 'Sales Company B');
+      const passwordHash = await hashPassword('TemporaryTestPassword2026');
+      const userA = await transaction.query(
+        'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id',
+        ['Sales User A', `sales-a-${randomUUID()}@test.invalid`, passwordHash]
+      );
+      const userB = await transaction.query(
+        'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id',
+        ['Sales User B', `sales-b-${randomUUID()}@test.invalid`, passwordHash]
+      );
+      await transaction.query(
+        "INSERT INTO organization_memberships (organization_id, user_id, role) VALUES ($1, $2, 'owner'), ($3, $4, 'owner')",
+        [organizationA, userA.rows[0].id, organizationB, userB.rows[0].id]
+      );
+      const productA = await transaction.query(
+        "INSERT INTO products (organization_id, name, quantity, minimum_quantity, unit_price_cents) VALUES ($1, 'Product Sales A', 5, 1, 2500) RETURNING id",
+        [organizationA]
+      );
+      const productB = await transaction.query(
+        "INSERT INTO products (organization_id, name, quantity, minimum_quantity, unit_price_cents) VALUES ($1, 'Product Sales B', 5, 1, 2500) RETURNING id",
+        [organizationB]
+      );
+      const customerB = await transaction.query(
+        "INSERT INTO customers (organization_id, name) VALUES ($1, 'Customer Sales B') RETURNING id",
+        [organizationB]
+      );
+      const saleB = await transaction.query(
+        `INSERT INTO sales (organization_id, customer_id, payment_method, payment_status, total_cents, created_by_user_id)
+         VALUES ($1, $2, 'pix', 'paid', 2500, $3) RETURNING id`,
+        [organizationB, customerB.rows[0].id, userB.rows[0].id]
+      );
+      await transaction.query(
+        `INSERT INTO sale_items (organization_id, sale_id, product_id, product_name, quantity, unit_price_cents, subtotal_cents)
+         VALUES ($1, $2, $3, 'Product Sales B', 1, 2500, 2500)`,
+        [organizationB, saleB.rows[0].id, productB.rows[0].id]
+      );
+      const sessionA = await createStoredSession(transaction, {
+        userId: userA.rows[0].id,
+        organizationId: organizationA,
+        config
+      });
+      return {
+        organizationA,
+        organizationB,
+        userAId: userA.rows[0].id,
+        userIds: [userA.rows[0].id, userB.rows[0].id],
+        productAId: productA.rows[0].id,
+        productBId: productB.rows[0].id,
+        customerBId: customerB.rows[0].id,
+        saleBId: saleB.rows[0].id,
+        sessionA
+      };
+    });
+
+    app = await buildApp({ config: { ...config, environment: 'test' }, db: database, logger: false });
+    const headers = {
+      cookie: `${sessionCookieName}=${fixture.sessionA.token}`,
+      'x-csrf-token': fixture.sessionA.csrfToken
+    };
+
+    const customers = await app.inject({ method: 'GET', url: '/api/v1/customers', headers });
+    assert.equal(customers.statusCode, 200);
+    assert.equal(customers.json().customers.some(customer => customer.id === fixture.customerBId), false);
+    const sales = await app.inject({ method: 'GET', url: '/api/v1/sales', headers });
+    assert.equal(sales.statusCode, 200);
+    assert.equal(sales.json().sales.some(sale => sale.id === fixture.saleBId), false);
+
+    const foreignOrder = await app.inject({
+      method: 'POST',
+      url: '/api/v1/sales',
+      headers,
+      payload: {
+        customerId: fixture.customerBId,
+        paymentMethod: 'pix',
+        paymentStatus: 'paid',
+        items: [{ productId: fixture.productBId, quantity: 1, unitPriceCents: 2500 }]
+      }
+    });
+    assert.equal(foreignOrder.statusCode, 400);
+    assert.equal(foreignOrder.json().error.code, 'SALES_REFERENCE_INVALID');
+
+    const customerCreated = await app.inject({
+      method: 'POST',
+      url: '/api/v1/customers',
+      headers,
+      payload: { name: 'Customer Sales A', email: `customer-a-${randomUUID()}@test.invalid` }
+    });
+    assert.equal(customerCreated.statusCode, 201);
+    const saleCreated = await app.inject({
+      method: 'POST',
+      url: '/api/v1/sales',
+      headers,
+      payload: {
+        customerId: customerCreated.json().customer.id,
+        paymentMethod: 'pix',
+        paymentStatus: 'paid',
+        items: [{ productId: fixture.productAId, quantity: 2, unitPriceCents: 2500 }]
+      }
+    });
+    assert.equal(saleCreated.statusCode, 201);
+    assert.equal(saleCreated.json().sale.totalCents, 5000);
+
+    const productAfterSale = await database.query('SELECT quantity FROM products WHERE id = $1', [fixture.productAId]);
+    assert.equal(productAfterSale.rows[0].quantity, 3);
+    const persistedSale = await database.query('SELECT organization_id FROM sales WHERE id = $1', [saleCreated.json().sale.id]);
+    assert.equal(persistedSale.rows[0].organization_id, fixture.organizationA);
+    const movement = await database.query(
+      "SELECT quantity_delta FROM stock_movements WHERE organization_id = $1 AND product_id = $2 AND movement_type = 'exit'",
+      [fixture.organizationA, fixture.productAId]
+    );
+    assert.equal(movement.rows[0].quantity_delta, -2);
+
+    const tenantDatabase = database.forTenant({ organizationId: fixture.organizationA, userId: fixture.userAId });
+    const foreignCustomer = await tenantDatabase.query('SELECT id FROM customers WHERE id = $1', [fixture.customerBId]);
+    const foreignSale = await tenantDatabase.query('SELECT id FROM sales WHERE id = $1', [fixture.saleBId]);
+    assert.equal(foreignCustomer.rowCount, 0);
+    assert.equal(foreignSale.rowCount, 0);
+
+    const dashboard = await app.inject({ method: 'GET', url: '/api/v1/sales/dashboard', headers });
+    assert.equal(dashboard.statusCode, 200);
+    assert.equal(dashboard.json().dashboard.summary.revenueCents, 5000);
+    assert.equal(dashboard.json().dashboard.summary.orderCount, 1);
+  } finally {
+    if (fixture) {
+      await database.transaction(async transaction => {
+        await transaction.query('DELETE FROM organizations WHERE id = ANY($1::uuid[])', [[fixture.organizationA, fixture.organizationB]]);
+        await transaction.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [fixture.userIds]);
+      });
+    }
+    await app?.close();
+    if (!app) await database.close();
+  }
+});

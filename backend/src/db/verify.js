@@ -9,6 +9,9 @@ const requiredTables = [
   'products',
   'stock_movements',
   'expenses',
+  'customers',
+  'sales',
+  'sale_items',
   'notifications',
   'audit_logs',
   'platform_administrators'

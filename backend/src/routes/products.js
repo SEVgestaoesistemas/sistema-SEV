@@ -7,15 +7,17 @@ const productSchema = z.object({
   name: z.string().trim().min(3).max(140),
   sku: z.string().trim().min(1).max(64).optional(),
   quantity: z.coerce.number().int().min(0).max(100000000).default(0),
-  minimumQuantity: z.coerce.number().int().min(0).max(100000000).default(0)
+  minimumQuantity: z.coerce.number().int().min(0).max(100000000).default(0),
+  unitPriceCents: z.coerce.number().int().min(0).max(1000000000000).default(0)
 });
 
-const inventoryRoles = ['owner', 'admin', 'inventory'];
+const inventoryReadRoles = ['owner', 'admin', 'inventory', 'operator'];
+const inventoryWriteRoles = ['owner', 'admin', 'inventory'];
 
 export const registerProductRoutes = async app => {
-  app.get('/products', { preHandler: [requireAuth, requireAccountAccess, requireRoles(inventoryRoles)] }, async request => {
+  app.get('/products', { preHandler: [requireAuth, requireAccountAccess, requireRoles(inventoryReadRoles)] }, async request => {
     const result = await request.tenantDb.query(
-      `SELECT id, name, sku, quantity, minimum_quantity AS "minimumQuantity", created_at AS "createdAt", updated_at AS "updatedAt"
+      `SELECT id, name, sku, quantity, minimum_quantity AS "minimumQuantity", unit_price_cents AS "unitPriceCents", created_at AS "createdAt", updated_at AS "updatedAt"
          FROM products
         WHERE organization_id = $1
         ORDER BY name ASC`,
@@ -25,15 +27,15 @@ export const registerProductRoutes = async app => {
   });
 
   app.post('/products', {
-    preHandler: [requireAuth, requireCsrf, requireAccountAccess, requireRoles(inventoryRoles)]
+    preHandler: [requireAuth, requireCsrf, requireAccountAccess, requireRoles(inventoryWriteRoles)]
   }, async (request, reply) => {
     const payload = validate(productSchema, request.body);
     const product = await request.tenantDb.transaction(async transaction => {
       const result = await transaction.query(
-        `INSERT INTO products (organization_id, name, sku, quantity, minimum_quantity)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, name, sku, quantity, minimum_quantity AS "minimumQuantity", created_at AS "createdAt"`,
-        [request.auth.organization.id, payload.name, payload.sku || null, payload.quantity, payload.minimumQuantity]
+        `INSERT INTO products (organization_id, name, sku, quantity, minimum_quantity, unit_price_cents)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id, name, sku, quantity, minimum_quantity AS "minimumQuantity", unit_price_cents AS "unitPriceCents", created_at AS "createdAt"`,
+        [request.auth.organization.id, payload.name, payload.sku || null, payload.quantity, payload.minimumQuantity, payload.unitPriceCents]
       );
       const created = result.rows[0];
       if (created.quantity > 0) {

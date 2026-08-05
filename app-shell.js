@@ -86,8 +86,47 @@
       title: 'Vendas',
       subtitle: 'Pedidos, clientes e ticket médio',
       content: `
-        <section class="module-hero"><p class="eyebrow">Operação comercial</p><h1>Vendas</h1><p>Consulte pedidos, desempenho comercial e indicadores de clientes.</p></section>
-        <section class="module-grid"><article class="module-card"><span>Pedidos no mês</span><strong>320</strong><small>8,1% acima do período anterior</small></article><article class="module-card"><span>Ticket médio</span><strong>R$ 401,25</strong><small>Por pedido concluído</small></article><article class="module-card"><span>Status</span><strong>Em preparação</strong><small>Lista de pedidos será conectada à API</small></article></section>`
+        <section class="module-hero"><p class="eyebrow">Operação comercial</p><h1>Vendas</h1><p>Cadastre clientes, registre pedidos e acompanhe os recebimentos da sua empresa.</p></section>
+        <section class="module-grid sales-summary-grid"><article class="module-card"><span>Pedidos no mês</span><strong id="salesOrderCount">0</strong><small id="salesOrderNote">Carregando pedidos…</small></article><article class="module-card"><span>Receita recebida</span><strong id="salesRevenue">R$ 0,00</strong><small>Vendas recebidas no mês</small></article><article class="module-card"><span>Ticket médio</span><strong id="salesAverageTicket">R$ 0,00</strong><small id="salesPendingNote">Nenhuma venda pendente</small></article></section>
+        <section class="sales-layout">
+          <section class="sales-panel" id="salesCustomerPanel" aria-labelledby="salesCustomerTitle">
+            <div class="settings-panel-head"><div><h2 id="salesCustomerTitle">Cadastrar cliente</h2><p>Clientes pertencem somente à sua empresa.</p></div></div>
+            <form class="sales-form-grid" id="customerForm">
+              <label class="field"><span>Nome completo ou empresa</span><input name="name" type="text" minlength="3" maxlength="140" required autocomplete="name"></label>
+              <label class="field"><span>CPF ou CNPJ <small>Opcional</small></span><input name="document" type="text" inputmode="numeric" maxlength="18" placeholder="Somente números"></label>
+              <label class="field"><span>E-mail <small>Opcional</small></span><input name="email" type="email" maxlength="160" autocomplete="email"></label>
+              <label class="field"><span>Telefone <small>Opcional</small></span><input name="phone" type="tel" maxlength="24" autocomplete="tel"></label>
+              <div class="sales-form-actions"><p class="sales-status" id="customerStatus" role="status" aria-live="polite"></p><button class="primary-button" type="submit">Salvar cliente</button></div>
+            </form>
+          </section>
+          <section class="sales-panel" id="salesOrderPanel" aria-labelledby="salesOrderTitle">
+            <div class="settings-panel-head"><div><h2 id="salesOrderTitle">Novo pedido</h2><p>O estoque é baixado automaticamente ao confirmar.</p></div></div>
+            <form class="sales-order-form" id="salesOrderForm">
+              <div class="sales-form-grid sales-order-fields">
+                <label class="field"><span>Cliente</span><select id="saleCustomer" name="customerId" required></select></label>
+                <label class="field"><span>Forma de pagamento</span><select id="salePaymentMethod" name="paymentMethod"><option value="pix">Pix</option><option value="card">Cartão</option><option value="cash">Dinheiro</option><option value="boleto">Boleto</option><option value="bank_transfer">Transferência</option><option value="other">Outro</option></select></label>
+                <label class="field"><span>Situação</span><select id="salePaymentStatus" name="paymentStatus"><option value="paid">Recebido</option><option value="pending">A prazo</option></select></label>
+                <label class="field" id="saleDueDateField" hidden><span>Vencimento</span><input id="saleDueDate" name="dueDate" type="date"></label>
+              </div>
+              <div class="sales-line-form">
+                <label class="field sales-product-field"><span>Produto</span><select id="saleProduct" aria-label="Produto do pedido"></select></label>
+                <label class="field"><span>Quantidade</span><input id="saleQuantity" type="number" min="1" step="1" value="1" inputmode="numeric"></label>
+                <label class="field"><span>Valor unitário (R$)</span><input id="saleUnitPrice" type="text" inputmode="decimal" placeholder="0,00"></label>
+                <button class="secondary-button" id="addSaleItem" type="button">Adicionar item</button>
+              </div>
+              <div class="sales-draft"><div class="table-wrap"><table><thead><tr><th>Produto</th><th>Qtd.</th><th>Unitário</th><th>Subtotal</th><th><span class="sr-only">Remover</span></th></tr></thead><tbody id="saleDraftItems"></tbody></table></div><div class="sales-draft-total"><span>Total do pedido</span><strong id="saleDraftTotal">R$ 0,00</strong></div></div>
+              <div class="sales-form-actions"><p class="sales-status" id="salesOrderStatus" role="status" aria-live="polite"></p><button class="primary-button" id="saveSalesOrder" type="submit">Confirmar pedido</button></div>
+            </form>
+          </section>
+        </section>
+        <section class="sales-panel sales-list-panel" aria-labelledby="salesListTitle">
+          <div class="sales-list-head"><div><h2 id="salesListTitle">Pedidos registrados</h2><p id="salesListSummary">Carregando pedidos…</p></div><button class="secondary-button" id="refreshSales" type="button">Atualizar</button></div>
+          <div class="table-wrap"><table class="sales-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Pagamento</th><th>Valor</th><th>Data</th><th>Status</th></tr></thead><tbody id="salesTableBody"></tbody></table></div>
+        </section>
+        <section class="sales-panel sales-list-panel" aria-labelledby="customersListTitle">
+          <div class="sales-list-head"><div><h2 id="customersListTitle">Clientes cadastrados</h2><p id="customersListSummary">Carregando clientes…</p></div><label class="stock-search"><span class="sr-only">Buscar cliente</span><input id="customerSearch" type="search" placeholder="Buscar cliente"></label></div>
+          <div class="table-wrap"><table class="sales-table"><thead><tr><th>Cliente</th><th>Documento</th><th>Contato</th><th>Cadastrado em</th></tr></thead><tbody id="customersTableBody"></tbody></table></div>
+        </section>`
     },
     estoque: {
       title: 'Estoque',

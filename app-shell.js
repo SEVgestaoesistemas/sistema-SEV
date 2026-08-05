@@ -34,7 +34,7 @@
               <button class="text-button invoice-remove-file" id="invoiceRemoveFile" type="button">Remover</button>
             </div>
           </div>
-          <div class="invoice-import-actions"><p id="invoiceStatus" role="status" aria-live="polite">A análise será apenas simulada nesta versão.</p><button class="primary-button" id="invoiceAnalyzeButton" type="button" disabled>Analisar nota</button></div>
+          <div class="invoice-import-actions"><p id="invoiceStatus" role="status" aria-live="polite">A leitura é demonstrativa. Ao confirmar, a despesa será salva na API.</p><button class="primary-button" id="invoiceAnalyzeButton" type="button" disabled>Analisar nota</button></div>
           <section class="invoice-review" id="invoiceReview" aria-labelledby="invoiceReviewTitle" hidden>
             <div class="invoice-review-head"><div><span class="invoice-review-kicker">Dados sugeridos pela leitura</span><h3 id="invoiceReviewTitle">Confira antes de adicionar a despesa</h3><p id="invoiceReviewFile"></p></div><span class="review-badge">Leitura demonstrativa</span></div>
             <form id="invoiceReviewForm">
@@ -53,7 +53,7 @@
           </section>
         </section>
         <section class="imported-expenses-panel" aria-labelledby="importedExpensesTitle">
-          <div class="settings-panel-head invoice-panel-head"><div><h2 id="importedExpensesTitle">Despesas importadas</h2><p id="importedExpensesSummary">Nenhuma nota adicionada neste dispositivo.</p></div><span class="local-label">Salvo localmente</span></div>
+          <div class="settings-panel-head invoice-panel-head"><div><h2 id="importedExpensesTitle">Despesas registradas</h2><p id="importedExpensesSummary">Carregando despesas da empresa…</p></div><span class="local-label">Sincronizado com a API</span></div>
           <div class="table-wrap"><table class="imported-expenses-table"><thead><tr><th>Fornecedor</th><th>Nota fiscal</th><th>Categoria</th><th>Vencimento</th><th>Valor</th></tr></thead><tbody id="importedExpensesBody"></tbody></table></div>
         </section>
         <section class="payment-panel" aria-labelledby="paymentTitle">
@@ -383,6 +383,7 @@
       try {
         const product = await window.SevApi.createProduct({ name, quantity, minimumQuantity });
         products = [...products, product].sort((first, second) => first.name.localeCompare(second.name, 'pt-BR'));
+        window.dispatchEvent(new CustomEvent('sev:notifications-changed'));
         renderStock();
         stockForm.reset();
         showStockStatus('Produto cadastrado no estoque da empresa.');

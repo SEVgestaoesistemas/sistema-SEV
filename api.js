@@ -73,6 +73,15 @@
     return readResponse(response);
   };
 
+  const queryString = parameters => {
+    const query = new URLSearchParams();
+    Object.entries(parameters || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') query.set(key, String(value));
+    });
+    const serialized = query.toString();
+    return serialized ? `?${serialized}` : '';
+  };
+
   const getCsrfToken = async () => {
     if (csrfToken) return csrfToken;
     const data = await request('/auth/csrf', { method: 'POST' });
@@ -110,6 +119,21 @@
       method: 'POST',
       body: product,
       csrf: true
-    })).product
+    })).product,
+    getExpenses: async parameters => (await request(`/expenses${queryString(parameters)}`)).expenses,
+    createExpense: async expense => (await request('/expenses', {
+      method: 'POST',
+      body: expense,
+      csrf: true
+    })).expense,
+    getNotifications: async () => (await request('/notifications')).notifications,
+    markNotificationRead: async id => (await request(`/notifications/${encodeURIComponent(id)}/read`, {
+      method: 'PATCH',
+      csrf: true
+    })).notification,
+    markAllNotificationsRead: async () => request('/notifications/read-all', {
+      method: 'POST',
+      csrf: true
+    })
   });
 })();

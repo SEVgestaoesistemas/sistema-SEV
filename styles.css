@@ -332,6 +332,9 @@ a{ color: inherit; text-decoration: none; }
 }
 .notification-item:last-child{ border-bottom:0; }
 .notification-item.unread{ background:var(--surface-soft); }
+.notification-item[role="button"]{ cursor:pointer; }
+.notification-item[role="button"]:hover{ background:var(--brand-tint); }
+.notification-item[role="button"]:focus-visible{ outline:3px solid rgba(91,78,242,.4); outline-offset:-3px; }
 .notification-marker{ width:7px; height:7px; margin-top:5px; border-radius:50%; background:transparent; }
 .notification-item.unread .notification-marker{ background:var(--brand); }
 .notification-item strong, .notification-item small, .notification-item time{ display:block; }

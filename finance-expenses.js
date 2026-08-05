@@ -1,4 +1,4 @@
-/* Demonstrative invoice import flow for the static financial module. */
+/* Demonstrative invoice reading with expenses saved through the SEV API. */
 (() => {
   const fileInput = document.getElementById('expenseInvoiceFile');
   if (!fileInput) return;
@@ -19,10 +19,10 @@
   const importedExpensesSummary = document.getElementById('importedExpensesSummary');
   const expenseTotal = document.getElementById('financeExpenseTotal');
   const expenseNote = document.getElementById('financeExpenseNote');
-  const storageKey = 'sev.finance.expenses.v1';
-  const baseExpenseTotal = 66500;
+  const reviewSubmitButton = reviewForm.querySelector('button[type="submit"]');
   const maxFileSize = 10 * 1024 * 1024;
   let selectedFile = null;
+  let expenses = [];
 
   const formatCurrency = value => new Intl.NumberFormat('pt-BR', {
     style: 'currency', currency: 'BRL'
@@ -42,46 +42,50 @@
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
   })[character]);
 
-  const readExpenses = () => {
-    try {
-      const stored = JSON.parse(localStorage.getItem(storageKey));
-      if (!Array.isArray(stored)) return [];
-      return stored.filter(expense => expense && typeof expense.id === 'string' && typeof expense.supplier === 'string' && typeof expense.documentNumber === 'string' && Number.isFinite(expense.amount) && expense.amount > 0);
-    } catch {
-      return [];
-    }
-  };
-
-  let expenses = readExpenses();
-
   const setStatus = (message, isError = false) => {
     status.textContent = message;
     status.classList.toggle('error', isError);
   };
 
   const renderExpenses = () => {
-    const importedTotal = expenses.reduce((total, expense) => total + expense.amount, 0);
-    expenseTotal.textContent = formatCurrency(baseExpenseTotal + importedTotal);
+    const totalCents = expenses.reduce((total, expense) => total + Number(expense.amountCents || 0), 0);
+    expenseTotal.textContent = formatCurrency(totalCents / 100);
     expenseNote.textContent = expenses.length
-      ? `Inclui ${expenses.length} despesa${expenses.length === 1 ? '' : 's'} importada${expenses.length === 1 ? '' : 's'} neste dispositivo`
-      : 'Últimos 30 dias';
+      ? `${expenses.length} despesa${expenses.length === 1 ? '' : 's'} registrada${expenses.length === 1 ? '' : 's'} na empresa`
+      : 'Nenhuma despesa registrada';
     importedExpensesSummary.textContent = expenses.length
-      ? `${expenses.length} nota${expenses.length === 1 ? '' : 's'} adicionada${expenses.length === 1 ? '' : 's'} neste dispositivo.`
-      : 'Nenhuma nota adicionada neste dispositivo.';
+      ? `${expenses.length} despesa${expenses.length === 1 ? '' : 's'} sincronizada${expenses.length === 1 ? '' : 's'} com a API.`
+      : 'Nenhuma despesa registrada na empresa.';
 
     if (!expenses.length) {
-      importedExpensesBody.innerHTML = '<tr><td class="empty-table" colspan="5">As notas importadas aparecerão aqui após a confirmação.</td></tr>';
+      importedExpensesBody.innerHTML = '<tr><td class="empty-table" colspan="5">As despesas confirmadas aparecerão aqui.</td></tr>';
       return;
     }
 
-    importedExpensesBody.innerHTML = expenses.slice().reverse().map(expense => `
+    importedExpensesBody.innerHTML = expenses.map(expense => `
       <tr>
-        <td><strong>${escapeHtml(expense.supplier)}</strong><small>${escapeHtml(expense.description || expense.fileName || 'Nota importada')}</small></td>
-        <td>${escapeHtml(expense.documentNumber)}</td>
+        <td><strong>${escapeHtml(expense.supplierName)}</strong><small>${escapeHtml(expense.description || expense.documentFileName || 'Despesa registrada')}</small></td>
+        <td>${escapeHtml(expense.documentNumber || '—')}</td>
         <td><span class="expense-category">${escapeHtml(expense.category)}</span></td>
         <td>${formatDate(expense.dueDate)}</td>
-        <td><strong>${formatCurrency(expense.amount)}</strong></td>
+        <td><strong>${formatCurrency(Number(expense.amountCents) / 100)}</strong></td>
       </tr>`).join('');
+  };
+
+  const loadExpenses = async () => {
+    setStatus('Carregando despesas da empresa…');
+    try {
+      const user = await window.SevAuth.ready;
+      if (!user) return;
+      expenses = await window.SevApi.getExpenses({ limit: 100 });
+      renderExpenses();
+      setStatus('');
+    } catch (error) {
+      expenseTotal.textContent = '—';
+      expenseNote.textContent = 'Dados indisponíveis';
+      importedExpensesSummary.textContent = 'Não foi possível carregar as despesas da empresa.';
+      setStatus(error.message || 'Não foi possível carregar as despesas.', true);
+    }
   };
 
   const clearSelection = () => {
@@ -92,7 +96,7 @@
     analyzeButton.textContent = 'Analisar nota';
     review.hidden = true;
     dropzone.classList.remove('has-file');
-    setStatus('A análise será apenas simulada nesta versão.');
+    setStatus('A leitura é demonstrativa. Ao confirmar, a despesa será salva na API.');
   };
 
   const setSelectedFile = file => {
@@ -199,7 +203,7 @@
     if (file) setSelectedFile(file);
   });
 
-  reviewForm.addEventListener('submit', event => {
+  reviewForm.addEventListener('submit', async event => {
     event.preventDefault();
     if (!reviewForm.reportValidity() || !selectedFile) return;
 
@@ -211,36 +215,39 @@
     }
 
     const documentNumber = reviewForm.elements.documentNumber.value.trim();
-    if (expenses.some(expense => expense.documentNumber.toLowerCase() === documentNumber.toLowerCase())) {
-      setStatus('Esta nota já foi adicionada às despesas neste dispositivo.', true);
+    if (documentNumber && expenses.some(expense => expense.documentNumber && expense.documentNumber.toLowerCase() === documentNumber.toLowerCase())) {
+      setStatus('Esta nota já está registrada nas despesas da empresa.', true);
       return;
     }
 
     const expense = {
-      id: globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function' ? globalThis.crypto.randomUUID() : `expense-${Date.now()}`,
-      supplier: reviewForm.elements.supplier.value.trim(),
+      supplierName: reviewForm.elements.supplier.value.trim(),
       supplierCnpj: reviewForm.elements.supplierCnpj.value.trim(),
       documentNumber,
       issueDate: reviewForm.elements.issueDate.value,
       dueDate: reviewForm.elements.dueDate.value,
       category: reviewForm.elements.category.value,
-      amount,
+      amountCents: Math.round(amount * 100),
       description: reviewForm.elements.description.value.trim(),
-      fileName: selectedFile.name,
-      createdAt: new Date().toISOString()
+      documentFileName: selectedFile.name
     };
 
+    reviewSubmitButton.disabled = true;
+    reviewSubmitButton.textContent = 'Salvando…';
     try {
-      expenses.push(expense);
-      localStorage.setItem(storageKey, JSON.stringify(expenses));
+      const createdExpense = await window.SevApi.createExpense(expense);
+      expenses = [createdExpense, ...expenses].sort((first, second) => String(second.dueDate).localeCompare(String(first.dueDate)));
       renderExpenses();
       clearSelection();
-      setStatus(`Despesa de ${formatCurrency(amount)} adicionada com sucesso neste protótipo.`);
-    } catch {
-      expenses = expenses.filter(item => item.id !== expense.id);
-      setStatus('Não foi possível salvar esta despesa neste navegador.', true);
+      setStatus(`Despesa de ${formatCurrency(amount)} salva na empresa.`);
+    } catch (error) {
+      setStatus(error.message || 'Não foi possível salvar esta despesa.', true);
+    } finally {
+      reviewSubmitButton.disabled = false;
+      reviewSubmitButton.textContent = 'Adicionar às despesas';
     }
   });
 
   renderExpenses();
+  loadExpenses();
 })();

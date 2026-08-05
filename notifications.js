@@ -1,4 +1,4 @@
-/* Shared notification center. Notification content is demonstrative until the API is connected. */
+/* Notification center backed by the SEV API. */
 (() => {
   const button = document.getElementById('notificationButton');
   const panel = document.getElementById('notificationPanel');
@@ -6,74 +6,82 @@
   const summary = document.getElementById('notificationSummary');
   const list = document.getElementById('notificationList');
   const markAllRead = document.getElementById('markNotificationsRead');
-  if (!button || !panel || !dot || !summary || !list || !markAllRead) return;
+  if (!button || !panel || !dot || !summary || !list || !markAllRead || !window.SevApi) return;
 
-  const storageKey = 'cerne.notifications.v1';
-  const stockStorageKey = 'cerne.stock.v1';
-  const fallbackStock = [
-    { id: 'fone-bluetooth', name: 'Fone bluetooth', quantity: 150, minimum: 30 },
-    { id: 'mochila-urbana', name: 'Mochila urbana', quantity: 75, minimum: 25 },
-    { id: 'luminaria-led', name: 'Luminária LED', quantity: 20, minimum: 50 },
-    { id: 'teclado-mecanico', name: 'Teclado mecânico', quantity: 0, minimum: 10 }
-  ];
   const escapeHtml = value => String(value).replace(/[&<>'"]/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
   })[character]);
-  const readStoredNotifications = () => {
-    try {
-      const stored = JSON.parse(localStorage.getItem(storageKey));
-      if (!Array.isArray(stored)) return [];
-      return stored.filter(item => item && typeof item.id === 'string' && typeof item.title === 'string' && typeof item.message === 'string' && typeof item.time === 'string');
-    } catch {
-      return [];
-    }
+  const formatTime = value => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Agora';
+    const difference = Date.now() - date.getTime();
+    const minutes = Math.floor(difference / 60000);
+    if (minutes < 1) return 'Agora';
+    if (minutes < 60) return `${minutes} min atrás`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} h atrás`;
+    return date.toLocaleDateString('pt-BR');
   };
-  const readStock = () => {
-    try {
-      const stored = JSON.parse(localStorage.getItem(stockStorageKey));
-      if (!Array.isArray(stored)) return fallbackStock;
-      const validProducts = stored.filter(product => product && typeof product.id === 'string' && typeof product.name === 'string' && Number.isSafeInteger(product.quantity) && product.quantity >= 0 && Number.isSafeInteger(product.minimum) && product.minimum >= 0);
-      return validProducts.length ? validProducts : fallbackStock;
-    } catch {
-      return fallbackStock;
-    }
-  };
-  const buildStockAlerts = () => readStock().filter(product => product.quantity <= product.minimum).map(product => ({
-    id: `stock-${product.id}`,
-    title: product.quantity === 0 ? 'Produto esgotado' : 'Estoque baixo',
-    message: product.quantity === 0 ? `${product.name} não possui unidades em estoque.` : `${product.name} tem ${product.quantity} unidade${product.quantity === 1 ? '' : 's'} disponível${product.quantity === 1 ? '' : 'is'}.`,
-    time: 'Atualizado agora'
-  }));
-  const readNotifications = () => {
-    const readState = new Map(readStoredNotifications().map(notification => [notification.id, notification.unread]));
-    return buildStockAlerts().map(notification => ({
-      ...notification,
-      unread: readState.has(notification.id) ? Boolean(readState.get(notification.id)) : true
-    }));
-  };
-  let notifications = readNotifications();
 
-  const persist = () => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(notifications));
-      return true;
-    } catch {
-      return false;
-    }
-  };
+  let notifications = [];
+  let loading = true;
+  let loadError = '';
+
   const render = () => {
-    const unreadCount = notifications.filter(notification => notification.unread).length;
+    const unreadCount = notifications.filter(notification => !notification.readAt).length;
     const unreadLabel = `${unreadCount} não lida${unreadCount === 1 ? '' : 's'}`;
     button.setAttribute('aria-label', `Notificações: ${unreadLabel}`);
     dot.hidden = unreadCount === 0;
     summary.textContent = unreadLabel;
-    markAllRead.disabled = unreadCount === 0;
-    list.innerHTML = notifications.length ? notifications.map(notification => `
-      <li class="notification-item${notification.unread ? ' unread' : ''}">
-        <span class="notification-marker" aria-hidden="true"></span>
-        <span><strong>${escapeHtml(notification.title)}</strong><small>${escapeHtml(notification.message)}</small><time>${escapeHtml(notification.time)}</time></span>
-      </li>`).join('') : '<li class="notification-empty">Não há alertas de estoque no momento.</li>';
+    markAllRead.disabled = loading || unreadCount === 0;
+
+    if (loading) {
+      list.innerHTML = '<li class="notification-empty">Carregando notificações…</li>';
+      return;
+    }
+    if (loadError) {
+      list.innerHTML = `<li class="notification-empty">${escapeHtml(loadError)}</li>`;
+      return;
+    }
+    list.innerHTML = notifications.length ? notifications.map(notification => {
+      const unread = !notification.readAt;
+      const action = unread ? 'Marcar como lida' : 'Notificação lida';
+      return `<li class="notification-item${unread ? ' unread' : ''}" data-notification-id="${escapeHtml(notification.id)}"${unread ? ' role="button" tabindex="0"' : ''} aria-label="${action}: ${escapeHtml(notification.title)}"><span class="notification-marker" aria-hidden="true"></span><span><strong>${escapeHtml(notification.title)}</strong><small>${escapeHtml(notification.message)}</small><time datetime="${escapeHtml(notification.createdAt)}">${escapeHtml(formatTime(notification.createdAt))}</time></span></li>`;
+    }).join('') : '<li class="notification-empty">Não há notificações no momento.</li>';
   };
+
+  const loadNotifications = async () => {
+    loading = true;
+    loadError = '';
+    render();
+    try {
+      const user = await window.SevAuth.ready;
+      if (!user) return;
+      notifications = await window.SevApi.getNotifications();
+    } catch (error) {
+      loadError = error.message || 'Não foi possível carregar as notificações.';
+    } finally {
+      loading = false;
+      render();
+    }
+  };
+
+  const markAsRead = async id => {
+    const notification = notifications.find(item => item.id === id);
+    if (!notification || notification.readAt) return;
+
+    const previous = notifications;
+    notifications = notifications.map(item => item.id === id ? { ...item, readAt: new Date().toISOString() } : item);
+    render();
+    try {
+      const result = await window.SevApi.markNotificationRead(id);
+      if (!result) await loadNotifications();
+    } catch (error) {
+      notifications = previous;
+      render();
+    }
+  };
+
   const closePanel = () => {
     panel.hidden = true;
     button.setAttribute('aria-expanded', 'false');
@@ -83,11 +91,29 @@
     const willOpen = panel.hidden;
     panel.hidden = !willOpen;
     button.setAttribute('aria-expanded', String(willOpen));
+    if (willOpen) loadNotifications();
   });
-  markAllRead.addEventListener('click', () => {
-    notifications = notifications.map(notification => ({ ...notification, unread: false }));
-    persist();
-    render();
+  markAllRead.addEventListener('click', async () => {
+    if (!notifications.some(notification => !notification.readAt)) return;
+    markAllRead.disabled = true;
+    try {
+      await window.SevApi.markAllNotificationsRead();
+      notifications = notifications.map(notification => ({ ...notification, readAt: new Date().toISOString() }));
+      render();
+    } catch (error) {
+      markAllRead.disabled = false;
+    }
+  });
+  list.addEventListener('click', event => {
+    const item = event.target.closest('[data-notification-id]');
+    if (item) markAsRead(item.dataset.notificationId);
+  });
+  list.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const item = event.target.closest('[data-notification-id]');
+    if (!item) return;
+    event.preventDefault();
+    markAsRead(item.dataset.notificationId);
   });
   document.addEventListener('click', event => {
     if (!panel.hidden && !event.target.closest('.notification-wrap')) closePanel();
@@ -95,9 +121,8 @@
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape') closePanel();
   });
-  window.addEventListener('cerne:stock-updated', () => {
-    notifications = readNotifications();
-    render();
-  });
+  window.addEventListener('sev:notifications-changed', loadNotifications);
+
   render();
+  loadNotifications();
 })();

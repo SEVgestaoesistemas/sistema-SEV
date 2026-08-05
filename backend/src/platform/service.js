@@ -6,6 +6,7 @@ import { hashPassword } from '../security/password.js';
 
 const normalizeEmail = email => email.trim().toLowerCase();
 const dateOnly = value => {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().slice(0, 10);
   const match = String(value || '').match(/^\d{4}-\d{2}-\d{2}/);
   return match ? match[0] : null;
 };

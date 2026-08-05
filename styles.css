@@ -882,6 +882,7 @@ tbody tr:hover{ background: var(--surface-soft); }
 .support-message p{ margin:0; padding:9px 11px; border-radius:12px; font-size:12px; line-height:1.4; }
 .support-message.assistant{ align-self:flex-start; }.support-message.assistant p{ border-bottom-left-radius:3px; background:var(--surface); color:var(--ink-soft); }
 .support-message.user{ align-self:flex-end; }.support-message.user p{ border-bottom-right-radius:3px; background:var(--brand); color:#fff; }
+.support-message.pending p{ color:var(--ink-muted); font-style:italic; }
 .support-suggestions{ display:flex; gap:6px; overflow-x:auto; padding:10px 12px; border-top:1px solid var(--border); }
 .support-suggestions button{ flex:0 0 auto; padding:5px 8px; border:1px solid var(--border); border-radius:999px; background:var(--surface); color:var(--ink-soft); font:inherit; font-size:10.5px; cursor:pointer; }
 .support-suggestions button:hover{ border-color:var(--brand); color:var(--brand); }
@@ -889,6 +890,7 @@ tbody tr:hover{ background: var(--surface-soft); }
 .support-form input{ min-width:0; flex:1; border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 9px; color:var(--ink); font:inherit; font-size:12px; }
 .support-form input:focus{ outline:0; border-color:var(--brand); box-shadow:0 0 0 3px var(--brand-tint); }
 .support-form button{ border:0; border-radius:var(--radius-sm); padding:0 10px; background:var(--brand); color:#fff; font:inherit; font-size:11px; font-weight:700; cursor:pointer; }
+.support-form button:disabled,.support-suggestions button:disabled{ cursor:wait; opacity:.65; }
 
 /* --------------------------------------------------------- settings page */
 .settings-form{ display:flex; flex-direction:column; gap:16px; }

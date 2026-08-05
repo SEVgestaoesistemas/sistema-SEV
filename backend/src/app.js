@@ -18,10 +18,13 @@ import { registerPlatformRoutes } from './routes/platform.js';
 import { registerSalesRoutes } from './routes/sales.js';
 import { registerReceivableRoutes } from './routes/receivables.js';
 import { registerReportRoutes } from './routes/reports.js';
+import { registerSupportRoutes } from './routes/support.js';
+import { createGeminiChat } from './support/gemini.js';
 
 export const buildApp = async (options = {}) => {
   const config = options.config || loadConfig();
   const db = options.db || createDatabase(config);
+  const geminiChat = options.geminiChat || createGeminiChat(config);
   const app = Fastify({
     logger: options.logger ?? config.environment !== 'test',
     trustProxy: config.trustProxy,
@@ -30,6 +33,7 @@ export const buildApp = async (options = {}) => {
 
   app.decorate('config', config);
   app.decorate('db', db);
+  app.decorate('geminiChat', geminiChat);
   app.decorateRequest('auth', null);
   app.decorateRequest('tenantDb', null);
 
@@ -87,6 +91,7 @@ export const buildApp = async (options = {}) => {
   await app.register(registerSalesRoutes, { prefix: '/api/v1' });
   await app.register(registerReceivableRoutes, { prefix: '/api/v1' });
   await app.register(registerReportRoutes, { prefix: '/api/v1' });
+  await app.register(registerSupportRoutes, { prefix: '/api/v1' });
   await app.register(registerPlatformRoutes, { prefix: '/api/v1' });
 
   app.setNotFoundHandler((request, reply) => reply.code(404).send({

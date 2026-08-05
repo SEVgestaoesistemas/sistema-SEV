@@ -1,4 +1,4 @@
-/* Visual support chat. Responses are local demonstrations until a secure API is connected. */
+/* Support chat. The Gemini key and all model calls stay on the API server. */
 (() => {
   const widget = document.createElement('section');
   widget.className = 'support-widget';
@@ -8,14 +8,14 @@
       <span>Suporte</span>
     </button>
     <section class="support-panel" id="supportPanel" aria-label="Chat de suporte" hidden>
-      <header class="support-head"><div><strong>Suporte SEV</strong><small>Assistente demonstrativo</small></div><button id="closeSupport" type="button" aria-label="Fechar suporte">×</button></header>
+      <header class="support-head"><div><strong>Suporte SEV</strong><small>Assistente de IA para uso do sistema</small></div><button id="closeSupport" type="button" aria-label="Fechar suporte">×</button></header>
       <div class="support-messages" id="supportMessages" role="log" aria-live="polite"></div>
       <div class="support-suggestions" aria-label="Dúvidas sugeridas">
         <button type="button" data-support-question="Como cadastrar produto?">Cadastrar produto</button>
         <button type="button" data-support-question="Onde vejo pagamentos pendentes?">Pagamentos pendentes</button>
         <button type="button" data-support-question="Como editar meu perfil?">Editar perfil</button>
       </div>
-      <form class="support-form" id="supportForm"><label class="sr-only" for="supportInput">Digite sua dúvida</label><input id="supportInput" type="text" maxlength="500" autocomplete="off" placeholder="Digite sua dúvida..."><button type="submit" aria-label="Enviar mensagem">Enviar</button></form>
+      <form class="support-form" id="supportForm"><label class="sr-only" for="supportInput">Digite sua dúvida</label><input id="supportInput" type="text" maxlength="1000" autocomplete="off" placeholder="Digite sua dúvida..."><button type="submit" aria-label="Enviar mensagem">Enviar</button></form>
     </section>`;
   document.body.append(widget);
 
@@ -25,35 +25,50 @@
   const messages = document.getElementById('supportMessages');
   const form = document.getElementById('supportForm');
   const input = document.getElementById('supportInput');
-  const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
-  const addMessage = (text, sender) => {
+  const submitButton = form.querySelector('button[type="submit"]');
+  let isSending = false;
+  const addMessage = (text, sender, pending = false) => {
     const message = document.createElement('div');
-    message.className = `support-message ${sender}`;
+    message.className = `support-message ${sender}${pending ? ' pending' : ''}`;
     const content = document.createElement('p');
     content.textContent = text;
     message.append(content);
     messages.append(message);
     messages.scrollTop = messages.scrollHeight;
+    return message;
   };
-  const getReply = question => {
-    const text = normalize(question);
-    if (text.includes('produto') || text.includes('estoque')) return 'Acesse Estoque no menu lateral. Em “Cadastrar produto”, informe o nome, a quantidade atual e o estoque mínimo; depois clique em “Adicionar produto”.';
-    if (text.includes('pagamento') || text.includes('pendente') || text.includes('receber')) return 'No menu Financeiro, consulte “Clientes com pagamento pendente”. Lá você vê os valores a receber, vencimentos e o status de cada cliente.';
-    if (text.includes('perfil') || text.includes('foto') || text.includes('administrador')) return 'Clique no avatar do Administrador. Escolha “Editar perfil” para alterar nome, e-mail ou foto. A opção “Sair” encerra somente a sessão local deste dispositivo.';
-    if (text.includes('equipe') || text.includes('usuario') || text.includes('usuário')) return 'Em Equipe, use “Adicionar integrante” para cadastrar nome, e-mail e função. Nesta versão, o cadastro é local e não envia convite por e-mail.';
-    if (text.includes('financeiro') || text.includes('receita') || text.includes('despesa')) return 'Em Financeiro, você encontra os indicadores de saldo, receitas e despesas, além de vendas por forma de pagamento e valores pendentes de clientes.';
-    return 'Ainda sou uma demonstração de suporte. Posso orientar sobre Estoque, Financeiro, Equipe e Perfil. Quando a integração segura com IA for adicionada, poderei responder dúvidas mais específicas.';
+  const setSending = value => {
+    isSending = value;
+    input.disabled = value;
+    submitButton.disabled = value;
+    submitButton.textContent = value ? 'Enviando...' : 'Enviar';
+    document.querySelectorAll('[data-support-question]').forEach(suggestion => {
+      suggestion.disabled = value;
+    });
   };
   const closePanel = () => {
     panel.hidden = true;
     button.setAttribute('aria-expanded', 'false');
   };
-  const ask = question => {
+  const ask = async question => {
     const trimmed = question.trim();
-    if (!trimmed) return;
+    if (!trimmed || isSending) return;
     addMessage(trimmed, 'user');
     input.value = '';
-    addMessage(getReply(trimmed), 'assistant');
+    setSending(true);
+    const typingMessage = addMessage('Consultando o assistente...', 'assistant', true);
+    try {
+      if (!window.SevApi?.sendSupportMessage) throw new Error('O chat de suporte não está disponível nesta página.');
+      const response = await window.SevApi.sendSupportMessage(trimmed);
+      typingMessage.remove();
+      addMessage(response.answer, 'assistant');
+    } catch (error) {
+      typingMessage.remove();
+      addMessage(error?.message || 'Não foi possível falar com o assistente. Sua dúvida será encaminhada ao suporte humano.', 'assistant');
+    } finally {
+      setSending(false);
+      if (!panel.hidden) input.focus();
+    }
   };
 
   button.addEventListener('click', () => {
@@ -73,5 +88,5 @@
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape') closePanel();
   });
-  addMessage('Olá! Sou o suporte da SEV. Como posso ajudar?', 'assistant');
+  addMessage('Olá! Posso orientar sobre como usar o sistema SEV. Não tenho acesso aos dados da sua empresa. Como posso ajudar?', 'assistant');
 })();

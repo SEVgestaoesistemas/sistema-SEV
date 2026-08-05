@@ -20,6 +20,25 @@ test('limite de login aceita configuração temporária por ambiente', () => {
   assert.equal(config.loginRateLimitWindow, '15 minutes');
 });
 
+test('chat de suporte possui limites diários seguros e configuráveis', () => {
+  const defaults = loadConfig({ NODE_ENV: 'test' });
+  assert.equal(defaults.geminiModel, 'gemini-2.5-flash-lite');
+  assert.equal(defaults.supportChatUserDailyLimit, 15);
+  assert.equal(defaults.supportChatOrganizationDailyLimit, 60);
+
+  const configured = loadConfig({
+    NODE_ENV: 'test',
+    GEMINI_API_KEY: 'test-key',
+    GEMINI_MODEL: 'gemini-2.5-flash',
+    SUPPORT_CHAT_USER_DAILY_LIMIT: '9',
+    SUPPORT_CHAT_ORGANIZATION_DAILY_LIMIT: '35'
+  });
+  assert.equal(configured.geminiApiKey, 'test-key');
+  assert.equal(configured.geminiModel, 'gemini-2.5-flash');
+  assert.equal(configured.supportChatUserDailyLimit, 9);
+  assert.equal(configured.supportChatOrganizationDailyLimit, 35);
+});
+
 test('cadastro público fica desativado por padrão e pode ser explicitamente habilitado no desenvolvimento', () => {
   assert.equal(loadConfig({ NODE_ENV: 'test' }).publicRegistrationEnabled, false);
   assert.equal(loadConfig({ NODE_ENV: 'test', PUBLIC_REGISTRATION_ENABLED: 'true' }).publicRegistrationEnabled, true);

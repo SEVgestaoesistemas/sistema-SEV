@@ -242,6 +242,11 @@
     markAllNotificationsRead: async () => request('/notifications/read-all', {
       method: 'POST',
       csrf: true
+    }),
+    sendSupportMessage: async message => request('/support/chat', {
+      method: 'POST',
+      body: { message },
+      csrf: true
     })
   });
 })();

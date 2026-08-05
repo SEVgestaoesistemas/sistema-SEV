@@ -568,3 +568,110 @@ test('accounts receivable are created from pending sales and remain isolated by 
     if (!app) await database.close();
   }
 });
+
+test('CSV reports apply period filters and never export another organization data', { skip: !enabled }, async () => {
+  const config = loadConfig();
+  assert.ok(config.databaseUrl, 'DATABASE_URL is required for the reports isolation test.');
+
+  const database = createDatabase(config);
+  let app;
+  let fixture;
+  try {
+    fixture = await database.transaction(async transaction => {
+      const organizationA = await insertOrganization(transaction, 'Reports Company A');
+      const organizationB = await insertOrganization(transaction, 'Reports Company B');
+      const passwordHash = await hashPassword('TemporaryTestPassword2026');
+      const userA = await transaction.query(
+        'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id',
+        ['Reports User A', `reports-a-${randomUUID()}@test.invalid`, passwordHash]
+      );
+      const userB = await transaction.query(
+        'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id',
+        ['Reports User B', `reports-b-${randomUUID()}@test.invalid`, passwordHash]
+      );
+      await transaction.query(
+        "INSERT INTO organization_memberships (organization_id, user_id, role) VALUES ($1, $2, 'owner'), ($3, $4, 'owner')",
+        [organizationA, userA.rows[0].id, organizationB, userB.rows[0].id]
+      );
+      const productA = await transaction.query(
+        "INSERT INTO products (organization_id, name, quantity, minimum_quantity) VALUES ($1, '=Produto Formula A', 7, 1) RETURNING id",
+        [organizationA]
+      );
+      const productB = await transaction.query(
+        "INSERT INTO products (organization_id, name, quantity, minimum_quantity) VALUES ($1, 'PRODUTO-SEGREDO-B', 3, 1) RETURNING id",
+        [organizationB]
+      );
+      await transaction.query(
+        `INSERT INTO stock_movements (organization_id, product_id, actor_user_id, movement_type, quantity_delta, note, created_at)
+         VALUES ($1, $2, $3, 'entry', 7, 'Movimentação A', '2026-08-05T12:00:00Z'),
+                ($4, $5, $6, 'entry', 3, 'MOVIMENTO-SEGREDO-B', '2026-08-05T12:00:00Z')`,
+        [organizationA, productA.rows[0].id, userA.rows[0].id, organizationB, productB.rows[0].id, userB.rows[0].id]
+      );
+      await transaction.query(
+        `INSERT INTO expenses (organization_id, supplier_name, due_date, category, description, amount_cents)
+         VALUES ($1, 'Fornecedor A', '2026-08-20', 'Teste', 'Despesa A', 1200),
+                ($2, 'FORNECEDOR-SEGREDO-B', '2026-08-20', 'Teste', 'DESPESA-SEGREDO-B', 2200)`,
+        [organizationA, organizationB]
+      );
+      const customerA = await transaction.query(
+        "INSERT INTO customers (organization_id, name) VALUES ($1, 'Cliente Relatório A') RETURNING id",
+        [organizationA]
+      );
+      const customerB = await transaction.query(
+        "INSERT INTO customers (organization_id, name) VALUES ($1, 'CLIENTE-SEGREDO-B') RETURNING id",
+        [organizationB]
+      );
+      await transaction.query(
+        `INSERT INTO sales (organization_id, customer_id, payment_method, payment_status, due_date, total_cents, created_by_user_id, created_at)
+         VALUES ($1, $2, 'boleto', 'pending', '2026-08-20', 4500, $3, '2026-08-05T12:00:00Z'),
+                ($4, $5, 'boleto', 'pending', '2026-08-20', 9900, $6, '2026-08-05T12:00:00Z')`,
+        [organizationA, customerA.rows[0].id, userA.rows[0].id, organizationB, customerB.rows[0].id, userB.rows[0].id]
+      );
+      const sessionA = await createStoredSession(transaction, {
+        userId: userA.rows[0].id,
+        organizationId: organizationA,
+        config
+      });
+      return {
+        organizationA,
+        organizationB,
+        userIds: [userA.rows[0].id, userB.rows[0].id],
+        sessionA
+      };
+    });
+
+    app = await buildApp({ config: { ...config, environment: 'test' }, db: database, logger: false });
+    const headers = { cookie: `${sessionCookieName}=${fixture.sessionA.token}` };
+    const query = '?startDate=2026-08-01&endDate=2026-08-31';
+    const reports = [
+      ['sales', 'Cliente Relatório A', 'CLIENTE-SEGREDO-B'],
+      ['stock', "'=Produto Formula A", 'PRODUTO-SEGREDO-B'],
+      ['expenses', 'Fornecedor A', 'FORNECEDOR-SEGREDO-B'],
+      ['receivables', 'Cliente Relatório A', 'CLIENTE-SEGREDO-B']
+    ];
+
+    for (const [report, ownValue, foreignValue] of reports) {
+      const response = await app.inject({ method: 'GET', url: `/api/v1/reports/${report}.csv${query}`, headers });
+      assert.equal(response.statusCode, 200, `${report} report should be available`);
+      assert.match(response.headers['content-type'], /text\/csv/);
+      assert.ok(response.body.includes(ownValue), `${report} report should contain organization A data`);
+      assert.equal(response.body.includes(foreignValue), false, `${report} report must not contain organization B data`);
+    }
+
+    const invalidPeriod = await app.inject({
+      method: 'GET',
+      url: '/api/v1/reports/sales.csv?startDate=2026-08-31&endDate=2026-08-01',
+      headers
+    });
+    assert.equal(invalidPeriod.statusCode, 400);
+  } finally {
+    if (fixture) {
+      await database.transaction(async transaction => {
+        await transaction.query('DELETE FROM organizations WHERE id = ANY($1::uuid[])', [[fixture.organizationA, fixture.organizationB]]);
+        await transaction.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [fixture.userIds]);
+      });
+    }
+    await app?.close();
+    if (!app) await database.close();
+  }
+});

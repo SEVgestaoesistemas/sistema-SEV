@@ -73,6 +73,38 @@
     return readResponse(response);
   };
 
+  const downloadCsv = async (path, fileName) => {
+    let response;
+    try {
+      response = await fetch(`${API_BASE_URL}${path}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: { Accept: 'text/csv' }
+      });
+    } catch {
+      throw createApiError('Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.');
+    }
+    if (!response.ok) {
+      const contentType = response.headers.get('content-type') || '';
+      const data = contentType.includes('application/json') ? await response.json() : null;
+      const error = createApiError(data?.error?.message || 'Não foi possível preparar o relatório.', response, data);
+      if (error.status === 401) {
+        clearSessionState();
+        window.dispatchEvent(new CustomEvent('sev:unauthenticated'));
+      }
+      throw error;
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const queryString = parameters => {
     const query = new URLSearchParams();
     Object.entries(parameters || {}).forEach(([key, value]) => {
@@ -179,6 +211,12 @@
     })).sale,
     getSalesDashboard: async () => (await request('/sales/dashboard')).dashboard,
     getDashboardOverview: async () => (await request('/dashboard/overview')).dashboard,
+    downloadReport: async (report, period) => {
+      const suffix = period?.startDate || period?.endDate
+        ? `-${period?.startDate || 'inicio'}-${period?.endDate || 'hoje'}`
+        : '';
+      return downloadCsv(`/reports/${encodeURIComponent(report)}.csv${queryString(period)}`, `sev-${report}${suffix}.csv`);
+    },
     getReceivables: async parameters => (await request(`/receivables${queryString(parameters)}`)).receivables,
     getReceivablesDashboard: async () => (await request('/receivables/dashboard')).dashboard,
     markReceivablePaid: async id => (await request(`/receivables/${encodeURIComponent(id)}/mark-paid`, {

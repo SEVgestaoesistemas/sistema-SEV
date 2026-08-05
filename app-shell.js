@@ -141,8 +141,22 @@
       title: 'Relatórios',
       subtitle: 'Exportações e análises detalhadas',
       content: `
-        <section class="module-hero"><p class="eyebrow">Análises</p><h1>Relatórios</h1><p>Centralize indicadores e prepare exportações para acompanhamento do negócio.</p></section>
-        <section class="module-grid"><article class="module-card"><span>Relatórios disponíveis</span><strong>3</strong><small>Financeiro, vendas e estoque</small></article><article class="module-card"><span>Última atualização</span><strong>Hoje, 09:40</strong><small>Dados demonstrativos</small></article><article class="module-card"><span>Exportações</span><strong>Em breve</strong><small>CSV e PDF serão adicionados aqui</small></article></section>`
+        <section class="module-hero"><p class="eyebrow">Análises</p><h1>Relatórios</h1><p>Exporte os dados reais da sua empresa em CSV para conferência e análise.</p></section>
+        <section class="reports-panel" aria-labelledby="reportsExportTitle">
+          <div class="settings-panel-head"><div><h2 id="reportsExportTitle">Exportar relatórios</h2><p>Escolha um período opcional e baixe o relatório desejado.</p></div><span class="local-label">Dados da sua empresa</span></div>
+          <form class="reports-filter" id="reportFilterForm">
+            <label class="field"><span>Data inicial <small>Opcional</small></span><input id="reportStartDate" name="startDate" type="date"></label>
+            <label class="field"><span>Data final <small>Opcional</small></span><input id="reportEndDate" name="endDate" type="date"></label>
+            <div class="reports-filter-note"><strong>Como o período é aplicado</strong><span>Vendas e estoque: data do pedido/movimentação. Despesas e contas a receber: vencimento.</span></div>
+          </form>
+          <div class="reports-grid">
+            <article class="report-card"><span class="report-card-kicker">Comercial</span><h3>Vendas</h3><p>Pedidos, clientes, forma de pagamento, situação e total.</p><button class="secondary-button report-download" type="button" data-report="sales">Baixar CSV de vendas</button></article>
+            <article class="report-card"><span class="report-card-kicker">Estoque</span><h3>Movimentações</h3><p>Entradas, saídas, ajustes e o saldo atual de cada produto.</p><button class="secondary-button report-download" type="button" data-report="stock">Baixar CSV de estoque</button></article>
+            <article class="report-card"><span class="report-card-kicker">Financeiro</span><h3>Despesas</h3><p>Fornecedores, notas fiscais, vencimentos, valores e itens importados.</p><button class="secondary-button report-download" type="button" data-report="expenses">Baixar CSV de despesas</button></article>
+            <article class="report-card"><span class="report-card-kicker">Financeiro</span><h3>Contas a receber</h3><p>Clientes, pedidos, vencimentos, recebimentos e situação.</p><button class="secondary-button report-download" type="button" data-report="receivables">Baixar CSV de contas</button></article>
+          </div>
+          <p class="reports-status" id="reportsStatus" role="status" aria-live="polite"></p>
+        </section>`
     },
     equipe: {
       title: 'Equipe',

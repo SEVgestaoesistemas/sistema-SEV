@@ -17,6 +17,7 @@ import { registerNotificationRoutes } from './routes/notifications.js';
 import { registerPlatformRoutes } from './routes/platform.js';
 import { registerSalesRoutes } from './routes/sales.js';
 import { registerReceivableRoutes } from './routes/receivables.js';
+import { registerReportRoutes } from './routes/reports.js';
 
 export const buildApp = async (options = {}) => {
   const config = options.config || loadConfig();
@@ -85,6 +86,7 @@ export const buildApp = async (options = {}) => {
   await app.register(registerNotificationRoutes, { prefix: '/api/v1' });
   await app.register(registerSalesRoutes, { prefix: '/api/v1' });
   await app.register(registerReceivableRoutes, { prefix: '/api/v1' });
+  await app.register(registerReportRoutes, { prefix: '/api/v1' });
   await app.register(registerPlatformRoutes, { prefix: '/api/v1' });
 
   app.setNotFoundHandler((request, reply) => reply.code(404).send({

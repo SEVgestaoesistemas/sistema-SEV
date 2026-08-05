@@ -1,4 +1,4 @@
-/* Demonstrative invoice reading with expenses saved through the SEV API. */
+/* XML NF-e import with explicit human review before creating an expense. */
 (() => {
   const fileInput = document.getElementById('expenseInvoiceFile');
   if (!fileInput) return;
@@ -15,18 +15,24 @@
   const reviewFile = document.getElementById('invoiceReviewFile');
   const reviewForm = document.getElementById('invoiceReviewForm');
   const cancelReviewButton = document.getElementById('invoiceCancelReview');
+  const invoiceItemsReview = document.getElementById('invoiceItemsReview');
+  const invoiceItemsSummary = document.getElementById('invoiceItemsSummary');
+  const invoiceItemsBody = document.getElementById('invoiceItemsBody');
   const importedExpensesBody = document.getElementById('importedExpensesBody');
   const importedExpensesSummary = document.getElementById('importedExpensesSummary');
   const expenseTotal = document.getElementById('financeExpenseTotal');
   const expenseNote = document.getElementById('financeExpenseNote');
   const reviewSubmitButton = reviewForm.querySelector('button[type="submit"]');
-  const maxFileSize = 10 * 1024 * 1024;
+  const maxFileSize = 1500000;
   let selectedFile = null;
+  let parsedInvoice = null;
   let expenses = [];
 
   const formatCurrency = value => new Intl.NumberFormat('pt-BR', {
     style: 'currency', currency: 'BRL'
   }).format(value);
+
+  const formatInputCurrency = cents => (Number(cents || 0) / 100).toFixed(2).replace('.', ',');
 
   const formatDate = value => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return '—';
@@ -38,7 +44,7 @@
     ? `${Math.max(1, Math.round(bytes / 1024))} KB`
     : `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`;
 
-  const escapeHtml = value => String(value).replace(/[&<>'"]/g, character => ({
+  const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
   })[character]);
 
@@ -88,56 +94,77 @@
     }
   };
 
+  const clearInvoiceItems = () => {
+    invoiceItemsReview.hidden = true;
+    invoiceItemsSummary.textContent = '';
+    invoiceItemsBody.innerHTML = '';
+  };
+
   const clearSelection = () => {
     selectedFile = null;
+    parsedInvoice = null;
     fileInput.value = '';
     fileCard.hidden = true;
     analyzeButton.disabled = true;
-    analyzeButton.textContent = 'Analisar nota';
+    analyzeButton.textContent = 'Ler XML';
     review.hidden = true;
+    clearInvoiceItems();
     dropzone.classList.remove('has-file');
-    setStatus('A leitura é demonstrativa. Ao confirmar, a despesa será salva na API.');
+    setStatus('O XML será lido pela API. A despesa só será salva após sua confirmação.');
   };
 
   const setSelectedFile = file => {
-    const extension = file.name.split('.').pop().toLowerCase();
-    if (!['pdf', 'xml'].includes(extension)) {
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    if (extension !== 'xml') {
       clearSelection();
-      setStatus('Selecione um arquivo em PDF ou XML.', true);
+      setStatus('Selecione o arquivo XML original da NF-e.', true);
       return;
     }
     if (file.size > maxFileSize) {
       clearSelection();
-      setStatus('O arquivo deve ter no máximo 10 MB.', true);
+      setStatus('O XML deve ter no máximo 1,5 MB.', true);
       return;
     }
 
     selectedFile = file;
+    parsedInvoice = null;
     fileName.textContent = file.name;
-    fileMeta.textContent = `${extension.toUpperCase()} · ${formatBytes(file.size)} · Pronto para análise`;
+    fileMeta.textContent = `XML · ${formatBytes(file.size)} · Pronto para leitura`;
     fileCard.hidden = false;
     analyzeButton.disabled = false;
-    dropzone.classList.add('has-file');
+    analyzeButton.textContent = 'Ler XML';
     review.hidden = true;
-    setStatus('Arquivo selecionado. Clique em “Analisar nota” para ver os dados sugeridos.');
+    clearInvoiceItems();
+    dropzone.classList.add('has-file');
+    setStatus('Arquivo selecionado. Clique em “Ler XML” para extrair os dados da NF-e.');
   };
 
-  const toDateInput = date => date.toISOString().slice(0, 10);
+  const renderInvoiceItems = items => {
+    invoiceItemsReview.hidden = false;
+    invoiceItemsSummary.textContent = `${items.length} item${items.length === 1 ? '' : 's'} extraído${items.length === 1 ? '' : 's'} do XML. Revise antes de confirmar.`;
+    invoiceItemsBody.innerHTML = items.map(item => `
+      <tr>
+        <td><strong>${escapeHtml(item.description)}</strong>${item.code ? `<small>Cód. ${escapeHtml(item.code)}</small>` : ''}</td>
+        <td>${escapeHtml(item.quantity || '—')}</td>
+        <td>${escapeHtml(item.unit || '—')}</td>
+        <td><strong>${formatCurrency(Number(item.totalCents) / 100)}</strong></td>
+      </tr>`).join('');
+  };
 
-  const fillSuggestedData = file => {
-    const today = new Date();
-    const dueDate = new Date(today);
-    dueDate.setDate(today.getDate() + 15);
-    const normalizedName = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();
-    reviewForm.elements.supplier.value = 'Fornecedor identificado na nota';
-    reviewForm.elements.supplierCnpj.value = '12.345.678/0001-90';
-    reviewForm.elements.documentNumber.value = 'NF-e 000.000.428';
-    reviewForm.elements.issueDate.value = toDateInput(today);
-    reviewForm.elements.category.value = 'Fornecedores';
-    reviewForm.elements.dueDate.value = toDateInput(dueDate);
-    reviewForm.elements.amount.value = '2.847,50';
-    reviewForm.elements.description.value = normalizedName ? `Despesa importada: ${normalizedName}` : 'Despesa importada da nota fiscal';
-    reviewFile.textContent = `Arquivo selecionado: ${file.name}. Os campos abaixo são preenchidos apenas para demonstrar a leitura.`;
+  const fillExtractedData = invoice => {
+    reviewForm.elements.supplier.value = invoice.supplierName || '';
+    reviewForm.elements.supplierCnpj.value = invoice.supplierCnpj || '';
+    reviewForm.elements.documentNumber.value = invoice.documentNumber || '';
+    reviewForm.elements.documentKey.value = invoice.documentKey || '';
+    reviewForm.elements.issueDate.value = invoice.issueDate || '';
+    reviewForm.elements.category.value = invoice.category || 'Fornecedores';
+    reviewForm.elements.dueDate.value = invoice.dueDate || '';
+    reviewForm.elements.amount.value = formatInputCurrency(invoice.amountCents);
+    reviewForm.elements.description.value = invoice.description || '';
+    reviewFile.textContent = invoice.dueDate
+      ? `${selectedFile.name} foi reconhecido. Confira todos os dados antes de salvar.`
+      : `${selectedFile.name} foi reconhecido. O XML não informa o vencimento; preencha-o antes de salvar.`;
+    renderInvoiceItems(invoice.items || []);
   };
 
   const parseAmount = value => {
@@ -146,23 +173,32 @@
     return Number.isFinite(amount) && amount > 0 && amount <= 10000000 ? amount : null;
   };
 
-  const analyzeFile = () => {
+  const analyzeFile = async () => {
     if (!selectedFile) {
       fileInput.click();
       return;
     }
     analyzeButton.disabled = true;
-    analyzeButton.textContent = 'Lendo nota…';
-    setStatus('Analisando o documento para montar a demonstração de conferência.');
-    window.setTimeout(() => {
-      if (!selectedFile) return;
-      fillSuggestedData(selectedFile);
+    analyzeButton.textContent = 'Lendo XML…';
+    setStatus('Validando e extraindo os dados do XML da NF-e…');
+    try {
+      const xmlContent = await selectedFile.text();
+      const invoice = await window.SevApi.parseNfeXml({ fileName: selectedFile.name, xmlContent });
+      if (selectedFile === null) return;
+      parsedInvoice = invoice;
+      fillExtractedData(invoice);
       review.hidden = false;
-      analyzeButton.disabled = false;
-      analyzeButton.textContent = 'Analisar novamente';
-      setStatus('Dados sugeridos prontos. Confira as informações antes de adicionar a despesa.');
+      setStatus('Dados extraídos. Revise e confirme manualmente antes de adicionar a despesa.');
       reviewForm.elements.supplier.focus();
-    }, 650);
+    } catch (error) {
+      review.hidden = true;
+      clearInvoiceItems();
+      parsedInvoice = null;
+      setStatus(error.message || 'Não foi possível ler este XML de NF-e.', true);
+    } finally {
+      analyzeButton.disabled = false;
+      analyzeButton.textContent = 'Ler novamente';
+    }
   };
 
   browseButton.addEventListener('click', event => {
@@ -183,7 +219,7 @@
   analyzeButton.addEventListener('click', analyzeFile);
   cancelReviewButton.addEventListener('click', () => {
     review.hidden = true;
-    setStatus('Conferência cancelada. O arquivo continua selecionado para uma nova análise.');
+    setStatus('Conferência cancelada. O XML continua selecionado para uma nova leitura.');
   });
 
   ['dragenter', 'dragover'].forEach(eventName => {
@@ -205,7 +241,10 @@
 
   reviewForm.addEventListener('submit', async event => {
     event.preventDefault();
-    if (!reviewForm.reportValidity() || !selectedFile) return;
+    if (!reviewForm.reportValidity() || !selectedFile || !parsedInvoice) {
+      setStatus('Leia o XML novamente antes de confirmar a despesa.', true);
+      return;
+    }
 
     const amount = parseAmount(reviewForm.elements.amount.value);
     if (amount === null) {
@@ -224,12 +263,14 @@
       supplierName: reviewForm.elements.supplier.value.trim(),
       supplierCnpj: reviewForm.elements.supplierCnpj.value.trim(),
       documentNumber,
+      documentKey: reviewForm.elements.documentKey.value.trim(),
       issueDate: reviewForm.elements.issueDate.value,
       dueDate: reviewForm.elements.dueDate.value,
       category: reviewForm.elements.category.value,
       amountCents: Math.round(amount * 100),
       description: reviewForm.elements.description.value.trim(),
-      documentFileName: selectedFile.name
+      documentFileName: selectedFile.name,
+      invoiceItems: parsedInvoice.items || []
     };
 
     reviewSubmitButton.disabled = true;
@@ -239,7 +280,7 @@
       expenses = [createdExpense, ...expenses].sort((first, second) => String(second.dueDate).localeCompare(String(first.dueDate)));
       renderExpenses();
       clearSelection();
-      setStatus(`Despesa de ${formatCurrency(amount)} salva na empresa.`);
+      setStatus(`Despesa de ${formatCurrency(amount)} salva na empresa após sua confirmação.`);
     } catch (error) {
       setStatus(error.message || 'Não foi possível salvar esta despesa.', true);
     } finally {

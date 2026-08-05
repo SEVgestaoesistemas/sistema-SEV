@@ -10,6 +10,15 @@ import { sessionCookieName } from '../../src/security/session.js';
 
 const enabled = process.env.RUN_DATABASE_SECURITY_TESTS === 'true';
 
+const xmlForImportTest = `<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc><NFe><infNFe Id="NFe35160812345678000190550010000001231000001234">
+<ide><nNF>123</nNF><dhEmi>2026-08-05T10:30:00-03:00</dhEmi></ide>
+<emit><CNPJ>12345678000190</CNPJ><xNome>Fornecedor de Importação Ltda</xNome></emit>
+<det nItem="1"><prod><cProd>XML-1</cProd><xProd>Produto importado</xProd><qCom>2.0000</qCom><uCom>UN</uCom><vUnCom>25.0000</vUnCom><vProd>50.00</vProd></prod></det>
+<total><ICMSTot><vNF>50.00</vNF></ICMSTot></total>
+<cobr><dup><dVenc>2026-08-20</dVenc></dup></cobr>
+</infNFe></NFe></nfeProc>`;
+
 const insertOrganization = async (client, name) => {
   const result = await client.query(
     'INSERT INTO organizations (name, slug) VALUES ($1, $2) RETURNING id',
@@ -188,6 +197,57 @@ test('authenticated API requests remain isolated even when given another organiz
     assert.equal(productCreated.statusCode, 201);
     const persisted = await database.query('SELECT organization_id FROM products WHERE id = $1', [productCreated.json().product.id]);
     assert.equal(persisted.rows[0].organization_id, fixture.organizationA);
+
+    const expenseCountBeforeRead = await database.query(
+      'SELECT COUNT(*) AS count FROM expenses WHERE organization_id = $1',
+      [fixture.organizationA]
+    );
+    assert.equal(Number(expenseCountBeforeRead.rows[0].count), 0);
+    const parsedInvoice = await app.inject({
+      method: 'POST',
+      url: '/api/v1/expenses/parse-nfe-xml',
+      headers,
+      payload: { fileName: 'nota-fiscal.xml', xmlContent: xmlForImportTest }
+    });
+    assert.equal(parsedInvoice.statusCode, 200);
+    assert.equal(parsedInvoice.json().invoice.supplierName, 'Fornecedor de Importação Ltda');
+    assert.equal(parsedInvoice.json().invoice.amountCents, 5000);
+    assert.equal(parsedInvoice.json().invoice.items.length, 1);
+
+    const expenseCountAfterRead = await database.query(
+      'SELECT COUNT(*) AS count FROM expenses WHERE organization_id = $1',
+      [fixture.organizationA]
+    );
+    assert.equal(Number(expenseCountAfterRead.rows[0].count), 0, 'reading XML must not create an expense without confirmation');
+
+    const confirmedImport = await app.inject({
+      method: 'POST',
+      url: '/api/v1/expenses',
+      headers,
+      payload: {
+        supplierName: parsedInvoice.json().invoice.supplierName,
+        supplierCnpj: parsedInvoice.json().invoice.supplierCnpj,
+        documentNumber: parsedInvoice.json().invoice.documentNumber,
+        documentKey: parsedInvoice.json().invoice.documentKey,
+        issueDate: parsedInvoice.json().invoice.issueDate,
+        dueDate: parsedInvoice.json().invoice.dueDate,
+        category: parsedInvoice.json().invoice.category,
+        description: parsedInvoice.json().invoice.description,
+        amountCents: parsedInvoice.json().invoice.amountCents,
+        documentFileName: 'nota-fiscal.xml',
+        invoiceItems: parsedInvoice.json().invoice.items
+      }
+    });
+    assert.equal(confirmedImport.statusCode, 201);
+    assert.equal(confirmedImport.json().expense.invoiceItems.length, 1);
+    const persistedImport = await database.query(
+      `SELECT organization_id, invoice_items AS "invoiceItems"
+         FROM expenses
+        WHERE id = $1`,
+      [confirmedImport.json().expense.id]
+    );
+    assert.equal(persistedImport.rows[0].organization_id, fixture.organizationA);
+    assert.equal(persistedImport.rows[0].invoiceItems[0].description, 'Produto importado');
   } finally {
     if (fixture) {
       await database.transaction(async transaction => {

@@ -186,6 +186,11 @@
       csrf: true
     })).receivable,
     getExpenses: async parameters => (await request(`/expenses${queryString(parameters)}`)).expenses,
+    parseNfeXml: async invoice => (await request('/expenses/parse-nfe-xml', {
+      method: 'POST',
+      body: invoice,
+      csrf: true
+    })).invoice,
     createExpense: async expense => (await request('/expenses', {
       method: 'POST',
       body: expense,

@@ -19,14 +19,14 @@
           <article class="module-card"><span>Despesas</span><strong id="financeExpenseTotal">R$ 66.500</strong><small id="financeExpenseNote">Últimos 30 dias</small></article>
         </section>
         <section class="invoice-import-panel" aria-labelledby="invoiceImportTitle">
-          <div class="settings-panel-head invoice-panel-head"><div><h2 id="invoiceImportTitle">Importar nota fiscal de despesa</h2><p>Envie a NF-e ou DANFE para preparar um lançamento em despesas.</p></div><span class="demo-label">Protótipo demonstrativo</span></div>
+          <div class="settings-panel-head invoice-panel-head"><div><h2 id="invoiceImportTitle">Importar XML de NF-e</h2><p>Envie o XML da NF-e para extrair os dados antes de registrar uma despesa.</p></div><span class="local-label">Leitura real de XML</span></div>
           <div class="invoice-import-layout">
             <div class="invoice-dropzone" id="invoiceDropzone" role="button" tabindex="0" aria-controls="expenseInvoiceFile" aria-describedby="invoiceUploadHelp">
               <span class="invoice-upload-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 16V4m0 0-4 4m4-4 4 4"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></span>
               <strong>Arraste o arquivo ou selecione do computador</strong>
-              <small id="invoiceUploadHelp">Aceita PDF ou XML, com até 10 MB.</small>
+              <small id="invoiceUploadHelp">Aceita XML de NF-e, com até 1,5 MB.</small>
               <button class="secondary-button" id="invoiceBrowseButton" type="button">Selecionar arquivo</button>
-              <input class="sr-only" id="expenseInvoiceFile" type="file" accept=".pdf,.xml,application/pdf,application/xml,text/xml">
+              <input class="sr-only" id="expenseInvoiceFile" type="file" accept=".xml,application/xml,text/xml">
             </div>
             <div class="invoice-file-card" id="invoiceFileCard" hidden>
               <span class="invoice-file-icon" aria-hidden="true">NF</span>
@@ -34,20 +34,25 @@
               <button class="text-button invoice-remove-file" id="invoiceRemoveFile" type="button">Remover</button>
             </div>
           </div>
-          <div class="invoice-import-actions"><p id="invoiceStatus" role="status" aria-live="polite">A leitura é demonstrativa. Ao confirmar, a despesa será salva na API.</p><button class="primary-button" id="invoiceAnalyzeButton" type="button" disabled>Analisar nota</button></div>
+          <div class="invoice-import-actions"><p id="invoiceStatus" role="status" aria-live="polite">O XML será lido pela API. A despesa só será salva após sua confirmação.</p><button class="primary-button" id="invoiceAnalyzeButton" type="button" disabled>Ler XML</button></div>
           <section class="invoice-review" id="invoiceReview" aria-labelledby="invoiceReviewTitle" hidden>
-            <div class="invoice-review-head"><div><span class="invoice-review-kicker">Dados sugeridos pela leitura</span><h3 id="invoiceReviewTitle">Confira antes de adicionar a despesa</h3><p id="invoiceReviewFile"></p></div><span class="review-badge">Leitura demonstrativa</span></div>
+            <div class="invoice-review-head"><div><span class="invoice-review-kicker">Dados extraídos do XML</span><h3 id="invoiceReviewTitle">Confira antes de adicionar a despesa</h3><p id="invoiceReviewFile"></p></div><span class="review-badge">Confirmação obrigatória</span></div>
             <form id="invoiceReviewForm">
               <div class="invoice-fields">
                 <label class="field"><span>Fornecedor</span><input name="supplier" type="text" minlength="3" maxlength="100" required></label>
                 <label class="field"><span>CNPJ</span><input name="supplierCnpj" type="text" maxlength="18" placeholder="00.000.000/0000-00" inputmode="numeric"></label>
                 <label class="field"><span>Número da nota</span><input name="documentNumber" type="text" maxlength="40" required></label>
+                <label class="field"><span>Chave de acesso <small>Opcional</small></span><input name="documentKey" type="text" maxlength="44" inputmode="numeric" placeholder="44 dígitos"></label>
                 <label class="field"><span>Data de emissão</span><input name="issueDate" type="date" required></label>
                 <label class="field"><span>Categoria</span><select name="category"><option value="Fornecedores">Fornecedores</option><option value="Serviços">Serviços</option><option value="Impostos">Impostos</option><option value="Operacional">Operacional</option><option value="Outros">Outros</option></select></label>
                 <label class="field"><span>Vencimento</span><input name="dueDate" type="date" required></label>
                 <label class="field"><span>Valor total</span><input name="amount" type="text" inputmode="decimal" placeholder="0,00" required></label>
                 <label class="field"><span>Descrição</span><input name="description" type="text" maxlength="140" required></label>
               </div>
+              <section class="invoice-items-review" id="invoiceItemsReview" aria-labelledby="invoiceItemsTitle" hidden>
+                <div class="invoice-items-head"><div><h4 id="invoiceItemsTitle">Itens identificados</h4><p id="invoiceItemsSummary"></p></div></div>
+                <div class="table-wrap"><table><thead><tr><th>Produto</th><th>Qtd.</th><th>Un.</th><th>Valor</th></tr></thead><tbody id="invoiceItemsBody"></tbody></table></div>
+              </section>
               <div class="invoice-review-actions"><button class="secondary-button" id="invoiceCancelReview" type="button">Cancelar</button><button class="primary-button" type="submit">Adicionar às despesas</button></div>
             </form>
           </section>

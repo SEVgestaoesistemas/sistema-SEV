@@ -51,7 +51,7 @@ export const createInvitation = async (db, payload, actor, config) => {
 export const acceptInvitation = async (db, payload, config) => db.transaction(async transaction => {
   const invitationResult = await transaction.query(
     `SELECT invitation.id, invitation.organization_id, invitation.recipient_name, invitation.email, invitation.role,
-            organization.plan_expires_at,
+            organization.plan_expires_at, organization.is_suspended,
             (organization.plan_expires_at IS NOT NULL AND organization.plan_expires_at < (now() AT TIME ZONE 'America/Sao_Paulo')::date) AS plan_expired
        FROM team_invitations invitation
        JOIN organizations organization ON organization.id = invitation.organization_id
@@ -67,6 +67,12 @@ export const acceptInvitation = async (db, payload, config) => db.transaction(as
     throw new AppError('O plano desta empresa expirou. Entre em contato com a SEV para regularizar o acesso.', {
       statusCode: 403,
       code: 'PLAN_EXPIRED'
+    });
+  }
+  if (invitation.is_suspended) {
+    throw new AppError('O acesso desta empresa está suspenso. Entre em contato com a SEV para regularizar.', {
+      statusCode: 403,
+      code: 'COMPANY_SUSPENDED'
     });
   }
 

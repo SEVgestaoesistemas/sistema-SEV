@@ -36,6 +36,12 @@ export const requireAccountAccess = async request => {
       code: 'PASSWORD_CHANGE_REQUIRED'
     });
   }
+  if (request.auth.companySuspended) {
+    throw new AppError('O acesso desta empresa está suspenso. Entre em contato com a SEV para regularizar.', {
+      statusCode: 403,
+      code: 'COMPANY_SUSPENDED'
+    });
+  }
   if (request.auth.planExpired) {
     throw new AppError('O plano desta empresa expirou. Entre em contato com a SEV para regularizar o acesso.', {
       statusCode: 403,

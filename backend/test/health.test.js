@@ -67,3 +67,17 @@ test('cadastro público é rejeitado quando a plataforma está em modo por assin
   assert.equal(response.json().error.code, 'REGISTRATION_DISABLED');
   await app.close();
 });
+
+test('ações de empresa exigem uma sessão de administrador da plataforma', async () => {
+  const app = await buildApp({ config, db: database, logger: false });
+  const routes = [
+    { method: 'PATCH', url: '/api/v1/platform/companies/00000000-0000-0000-0000-000000000000/suspension', payload: { suspended: true } },
+    { method: 'POST', url: '/api/v1/platform/companies/00000000-0000-0000-0000-000000000000/temporary-password' },
+    { method: 'DELETE', url: '/api/v1/platform/companies/00000000-0000-0000-0000-000000000000', payload: { confirmationName: 'Teste' } }
+  ];
+  for (const route of routes) {
+    const response = await app.inject(route);
+    assert.equal(response.statusCode, 401);
+  }
+  await app.close();
+});

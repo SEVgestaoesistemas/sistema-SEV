@@ -184,8 +184,19 @@
         </section>
         <section class="settings-panel platform-list-panel" aria-labelledby="platformCompaniesTitle">
           <div class="settings-panel-head"><div><h2 id="platformCompaniesTitle">Empresas cadastradas</h2><p id="platformCompaniesSummary">Carregando empresas…</p></div><button class="secondary-button" id="refreshPlatformCompanies" type="button">Atualizar lista</button></div>
-          <div class="table-wrap"><table class="platform-companies-table"><thead><tr><th>Empresa</th><th>Responsável</th><th>Validade do plano</th><th>Pagamento</th><th>Atualizar validade</th></tr></thead><tbody id="platformCompaniesBody"></tbody></table></div>
-        </section>`
+          <div class="platform-list-tools"><label class="stock-search platform-search"><span class="sr-only">Buscar empresa ou responsável</span><input id="platformCompanySearch" type="search" placeholder="Buscar empresa, responsável ou e-mail"></label></div>
+          <div class="table-wrap"><table class="platform-companies-table"><thead><tr><th>Empresa</th><th>Responsável</th><th>Validade do plano</th><th>Status</th><th>Atualizar validade</th><th>Ações</th></tr></thead><tbody id="platformCompaniesBody"></tbody></table></div>
+        </section>
+        <div class="profile-modal" id="platformAdministratorModal" role="dialog" aria-modal="true" aria-labelledby="platformAdministratorModalTitle" hidden>
+          <div class="profile-modal-card">
+            <div class="profile-modal-head"><div><h2 id="platformAdministratorModalTitle">Editar responsável</h2><p id="platformAdministratorModalCompany"></p></div><button class="modal-close" id="closePlatformAdministratorModal" type="button" aria-label="Fechar">×</button></div>
+            <form id="platformAdministratorForm">
+              <label class="field"><span>Nome do responsável</span><input name="administratorName" type="text" minlength="3" maxlength="100" autocomplete="name" required></label>
+              <label class="field"><span>E-mail do responsável</span><input name="administratorEmail" type="email" maxlength="160" autocomplete="email" required></label>
+              <div class="profile-modal-actions"><p id="platformAdministratorStatus" role="status" aria-live="polite"></p><button class="primary-button" type="submit">Salvar responsável</button></div>
+            </form>
+          </div>
+        </div>`
     }
   };
 

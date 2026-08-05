@@ -23,5 +23,9 @@ test('acesso operacional é recusado até a troca obrigatória de senha e após 
     requireAccountAccess({ auth: { passwordChangeRequired: false, planExpired: true } }),
     error => error.code === 'PLAN_EXPIRED' && error.statusCode === 403
   );
+  await assert.rejects(
+    requireAccountAccess({ auth: { passwordChangeRequired: false, companySuspended: true, planExpired: false } }),
+    error => error.code === 'COMPANY_SUSPENDED' && error.statusCode === 403
+  );
   await requireAccountAccess({ auth: { passwordChangeRequired: false, planExpired: false } });
 });

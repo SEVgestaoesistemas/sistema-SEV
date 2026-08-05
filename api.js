@@ -134,6 +134,25 @@
       body: { planExpiresAt },
       csrf: true
     })).company,
+    setPlatformCompanySuspension: async (id, suspended) => (await request(`/platform/companies/${encodeURIComponent(id)}/suspension`, {
+      method: 'PATCH',
+      body: { suspended },
+      csrf: true
+    })).company,
+    updatePlatformCompanyAdministrator: async (id, administrator) => (await request(`/platform/companies/${encodeURIComponent(id)}/administrator`, {
+      method: 'PATCH',
+      body: administrator,
+      csrf: true
+    })).company,
+    resetPlatformCompanyPassword: async id => request(`/platform/companies/${encodeURIComponent(id)}/temporary-password`, {
+      method: 'POST',
+      csrf: true
+    }),
+    deletePlatformCompany: async (id, confirmationName) => request(`/platform/companies/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      body: { confirmationName },
+      csrf: true
+    }),
     getProducts: async () => (await request('/products')).products,
     createProduct: async product => (await request('/products', {
       method: 'POST',

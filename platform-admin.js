@@ -7,12 +7,19 @@
   const body = document.getElementById('platformCompaniesBody');
   const summary = document.getElementById('platformCompaniesSummary');
   const refreshButton = document.getElementById('refreshPlatformCompanies');
+  const search = document.getElementById('platformCompanySearch');
   const temporaryCard = document.getElementById('temporaryAccessCard');
   const temporaryName = document.getElementById('temporaryAccessName');
   const temporaryEmail = document.getElementById('temporaryAccessEmail');
   const temporaryPassword = document.getElementById('temporaryAccessPassword');
   const copyPasswordButton = document.getElementById('copyTemporaryPassword');
+  const administratorModal = document.getElementById('platformAdministratorModal');
+  const administratorForm = document.getElementById('platformAdministratorForm');
+  const administratorModalCompany = document.getElementById('platformAdministratorModalCompany');
+  const administratorStatus = document.getElementById('platformAdministratorStatus');
+  const closeAdministratorModalButton = document.getElementById('closePlatformAdministratorModal');
   let companies = [];
+  let editingCompanyId = null;
 
   const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
@@ -27,25 +34,73 @@
     const [year, month, day] = date.split('-');
     return `${day}/${month}/${year}`;
   };
-  const statusLabel = statusValue => ({ active: 'Em dia', expired: 'Vencido', not_configured: 'Sem validade' })[statusValue] || 'Sem status';
-  const statusClass = statusValue => ({ active: 'ok', expired: 'out', not_configured: 'low' })[statusValue] || 'low';
+  const planStatusLabel = statusValue => ({ active: 'Em dia', expired: 'Vencido', not_configured: 'Sem validade' })[statusValue] || 'Sem status';
+  const planStatusClass = statusValue => ({ active: 'ok', expired: 'out', not_configured: 'low' })[statusValue] || 'low';
   const showStatus = (message, error = false) => {
     status.textContent = message;
     status.classList.toggle('error', error);
   };
+  const findCompany = id => companies.find(company => company.id === id);
+  const visibleCompanies = () => {
+    const query = search.value.trim().toLocaleLowerCase('pt-BR');
+    if (!query) return companies;
+    return companies.filter(company => [company.name, company.administrator?.name, company.administrator?.email]
+      .filter(Boolean)
+      .some(value => value.toLocaleLowerCase('pt-BR').includes(query)));
+  };
+  const showTemporaryAccess = (administrator, label = 'Acesso temporário criado') => {
+    temporaryCard.querySelector('.temporary-access-kicker').textContent = label;
+    temporaryName.textContent = administrator.name;
+    temporaryEmail.textContent = administrator.email;
+    temporaryPassword.value = administrator.temporaryPassword;
+    temporaryCard.hidden = false;
+    temporaryCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+  const closeAdministratorModal = () => {
+    administratorModal.hidden = true;
+    administratorStatus.textContent = '';
+    administratorStatus.classList.remove('error');
+    editingCompanyId = null;
+  };
+  const openAdministratorModal = company => {
+    if (!company?.administrator) return;
+    editingCompanyId = company.id;
+    administratorModalCompany.textContent = company.name;
+    administratorForm.elements.administratorName.value = company.administrator.name;
+    administratorForm.elements.administratorEmail.value = company.administrator.email;
+    administratorModal.hidden = false;
+    administratorForm.elements.administratorName.focus();
+  };
 
   const render = () => {
-    const active = companies.filter(company => company.planStatus === 'active').length;
-    const expired = companies.filter(company => company.planStatus === 'expired').length;
-    summary.textContent = `${companies.length} empresa${companies.length === 1 ? '' : 's'} cadastrada${companies.length === 1 ? '' : 's'} · ${active} em dia · ${expired} vencida${expired === 1 ? '' : 's'}`;
-    body.innerHTML = companies.length ? companies.map(company => `
-      <tr>
-        <td><strong>${escapeHtml(company.name)}</strong><small>Criada em ${dateLabel(company.createdAt)}</small></td>
-        <td>${company.administrator ? `<strong>${escapeHtml(company.administrator.name)}</strong><small>${escapeHtml(company.administrator.email)}</small>` : '—'}</td>
-        <td>${dateLabel(company.planExpiresAt)}</td>
-        <td><span class="badge ${statusClass(company.planStatus)}">${statusLabel(company.planStatus)}</span></td>
-        <td><div class="plan-update-control"><input data-plan-date="${company.id}" type="date" value="${escapeHtml(dateOnly(company.planExpiresAt))}" aria-label="Nova validade para ${escapeHtml(company.name)}"><button class="secondary-button" type="button" data-save-plan="${company.id}">Salvar</button></div></td>
-      </tr>`).join('') : '<tr><td class="empty-table" colspan="5">Nenhuma empresa cadastrada.</td></tr>';
+    const visible = visibleCompanies();
+    const active = companies.filter(company => company.planStatus === 'active' && !company.isSuspended).length;
+    const suspended = companies.filter(company => company.isSuspended).length;
+    const expired = companies.filter(company => company.planStatus === 'expired' && !company.isSuspended).length;
+    const filtered = visible.length !== companies.length ? ` · ${visible.length} exibida${visible.length === 1 ? '' : 's'}` : '';
+    summary.textContent = `${companies.length} empresa${companies.length === 1 ? '' : 's'} cadastrada${companies.length === 1 ? '' : 's'} · ${active} em dia · ${expired} vencida${expired === 1 ? '' : 's'} · ${suspended} suspensa${suspended === 1 ? '' : 's'}${filtered}`;
+    body.innerHTML = visible.length ? visible.map(company => {
+      const protectedAccount = company.containsPlatformAdmin;
+      const accountStatus = company.isSuspended
+        ? '<span class="badge out">Suspensa</span>'
+        : `<span class="badge ${planStatusClass(company.planStatus)}">${planStatusLabel(company.planStatus)}</span>`;
+      const protectedMessage = protectedAccount ? '<small class="platform-protected-note">Conta da plataforma protegida</small>' : '';
+      return `
+        <tr>
+          <td><strong>${escapeHtml(company.name)}</strong><small>Criada em ${dateLabel(company.createdAt)}</small></td>
+          <td>${company.administrator ? `<strong>${escapeHtml(company.administrator.name)}</strong><small>${escapeHtml(company.administrator.email)}</small>` : '—'}</td>
+          <td>${dateLabel(company.planExpiresAt)}</td>
+          <td><div class="platform-status-stack">${accountStatus}${company.isSuspended ? `<small>Plano: ${planStatusLabel(company.planStatus)}</small>` : ''}</div></td>
+          <td><div class="plan-update-control"><input data-plan-date="${company.id}" type="date" value="${escapeHtml(dateOnly(company.planExpiresAt))}" aria-label="Nova validade para ${escapeHtml(company.name)}"><button class="secondary-button" type="button" data-save-plan="${company.id}">Salvar</button></div></td>
+          <td><div class="platform-row-actions">
+            <button class="text-button" type="button" data-edit-administrator="${company.id}" ${protectedAccount ? 'disabled' : ''}>Editar responsável</button>
+            <button class="text-button" type="button" data-reset-password="${company.id}" ${protectedAccount ? 'disabled' : ''}>Nova senha</button>
+            <button class="text-button" type="button" data-toggle-suspension="${company.id}">${company.isSuspended ? 'Reativar acesso' : 'Suspender acesso'}</button>
+            <button class="text-button platform-delete-button" type="button" data-delete-company="${company.id}" ${protectedAccount ? 'disabled' : ''}>Excluir permanentemente</button>
+            ${protectedMessage}
+          </div></td>
+        </tr>`;
+    }).join('') : '<tr><td class="empty-table" colspan="6">Nenhuma empresa encontrada.</td></tr>';
   };
 
   const loadCompanies = async () => {
@@ -57,7 +112,7 @@
       render();
     } catch (error) {
       summary.textContent = error.message || 'Não foi possível carregar as empresas.';
-      body.innerHTML = '<tr><td class="empty-table" colspan="5">Não foi possível carregar os dados.</td></tr>';
+      body.innerHTML = '<tr><td class="empty-table" colspan="6">Não foi possível carregar os dados.</td></tr>';
     }
   };
 
@@ -79,10 +134,7 @@
       companies = [result.company, ...companies];
       render();
       form.reset();
-      temporaryName.textContent = result.administrator.name;
-      temporaryEmail.textContent = result.administrator.email;
-      temporaryPassword.value = result.administrator.temporaryPassword;
-      temporaryCard.hidden = false;
+      showTemporaryAccess(result.administrator);
       showStatus('Empresa criada com sucesso. Guarde a senha temporária agora.');
     } catch (error) {
       showStatus(error.message || 'Não foi possível criar a empresa.', true);
@@ -93,29 +145,120 @@
   });
 
   body.addEventListener('click', async event => {
-    const button = event.target.closest('[data-save-plan]');
-    if (!button) return;
-    const id = button.dataset.savePlan;
-    const input = body.querySelector(`[data-plan-date="${id}"]`);
-    if (!input?.value) {
-      window.alert('Informe uma data de validade para salvar.');
-      input?.focus();
+    const button = event.target.closest('button');
+    if (!button || button.disabled) return;
+    const id = button.dataset.savePlan || button.dataset.editAdministrator || button.dataset.resetPassword || button.dataset.toggleSuspension || button.dataset.deleteCompany;
+    if (!id) return;
+    const company = findCompany(id);
+    if (!company) return;
+
+    if (button.dataset.savePlan) {
+      const input = body.querySelector(`[data-plan-date="${id}"]`);
+      if (!input?.value) {
+        window.alert('Informe uma data de validade para salvar.');
+        input?.focus();
+        return;
+      }
+      button.disabled = true;
+      button.textContent = 'Salvando…';
+      try {
+        const updated = await window.SevApi.updatePlatformCompanyPlan(id, input.value);
+        companies = companies.map(item => item.id === id ? updated : item);
+        render();
+      } catch (error) {
+        window.alert(error.message || 'Não foi possível atualizar a validade.');
+        button.disabled = false;
+        button.textContent = 'Salvar';
+      }
       return;
     }
+
+    if (button.dataset.editAdministrator) {
+      openAdministratorModal(company);
+      return;
+    }
+
+    if (button.dataset.resetPassword) {
+      if (!window.confirm(`Gerar uma nova senha temporária para ${company.administrator?.name || 'o responsável'}? Todas as sessões dessa pessoa serão encerradas.`)) return;
+      button.disabled = true;
+      button.textContent = 'Gerando…';
+      try {
+        const result = await window.SevApi.resetPlatformCompanyPassword(id);
+        companies = companies.map(item => item.id === id ? result.company : item);
+        render();
+        showTemporaryAccess(result.administrator, 'Nova senha temporária gerada');
+      } catch (error) {
+        window.alert(error.message || 'Não foi possível gerar uma nova senha.');
+        button.disabled = false;
+        button.textContent = 'Nova senha';
+      }
+      return;
+    }
+
+    if (button.dataset.toggleSuspension) {
+      const nextSuspension = !company.isSuspended;
+      const message = nextSuspension
+        ? `Suspender ${company.name}? Os dados serão preservados, mas o acesso da empresa será bloqueado imediatamente.`
+        : `Reativar ${company.name}? O acesso voltará a depender apenas da validade do plano.`;
+      if (!window.confirm(message)) return;
+      button.disabled = true;
+      button.textContent = nextSuspension ? 'Suspendendo…' : 'Reativando…';
+      try {
+        const updated = await window.SevApi.setPlatformCompanySuspension(id, nextSuspension);
+        companies = companies.map(item => item.id === id ? updated : item);
+        render();
+      } catch (error) {
+        window.alert(error.message || 'Não foi possível alterar o acesso da empresa.');
+        button.disabled = false;
+        button.textContent = nextSuspension ? 'Suspender acesso' : 'Reativar acesso';
+      }
+      return;
+    }
+
+    const confirmationName = window.prompt(`Esta ação excluirá permanentemente a empresa, usuários sem outros vínculos e todos os dados dela.\n\nPara confirmar, digite exatamente: ${company.name}`);
+    if (confirmationName === null) return;
+    button.disabled = true;
+    button.textContent = 'Excluindo…';
+    try {
+      await window.SevApi.deletePlatformCompany(id, confirmationName);
+      companies = companies.filter(item => item.id !== id);
+      render();
+      showStatus(`${company.name} foi excluída permanentemente.`);
+    } catch (error) {
+      window.alert(error.message || 'Não foi possível excluir a empresa.');
+      button.disabled = false;
+      button.textContent = 'Excluir permanentemente';
+    }
+  });
+
+  administratorForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!administratorForm.reportValidity() || !editingCompanyId) return;
+    const button = administratorForm.querySelector('button[type="submit"]');
+    const payload = {
+      administratorName: administratorForm.elements.administratorName.value.trim(),
+      administratorEmail: administratorForm.elements.administratorEmail.value.trim().toLowerCase()
+    };
     button.disabled = true;
     button.textContent = 'Salvando…';
+    administratorStatus.textContent = '';
     try {
-      const updated = await window.SevApi.updatePlatformCompanyPlan(id, input.value);
-      companies = companies.map(company => company.id === id ? { ...company, ...updated } : company);
+      const updated = await window.SevApi.updatePlatformCompanyAdministrator(editingCompanyId, payload);
+      companies = companies.map(item => item.id === editingCompanyId ? updated : item);
       render();
+      closeAdministratorModal();
+      showStatus('Responsável atualizado com sucesso.');
     } catch (error) {
-      window.alert(error.message || 'Não foi possível atualizar a validade.');
+      administratorStatus.textContent = error.message || 'Não foi possível atualizar o responsável.';
+      administratorStatus.classList.add('error');
+    } finally {
       button.disabled = false;
-      button.textContent = 'Salvar';
+      button.textContent = 'Salvar responsável';
     }
   });
 
   refreshButton.addEventListener('click', loadCompanies);
+  search.addEventListener('input', render);
   copyPasswordButton.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(temporaryPassword.value);
@@ -127,6 +270,9 @@
       window.alert('Copie a senha selecionada manualmente.');
     }
   });
+  closeAdministratorModalButton.addEventListener('click', closeAdministratorModal);
+  administratorModal.addEventListener('click', event => { if (event.target === administratorModal) closeAdministratorModal(); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeAdministratorModal(); });
 
   loadCompanies();
 })();

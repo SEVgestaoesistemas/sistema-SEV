@@ -13,10 +13,12 @@ const toPublicUser = row => ({
     name: row.organization_name,
     role: row.role,
     planExpiresAt: row.plan_expires_at || null,
-    planStatus: row.plan_expired ? 'expired' : row.plan_expires_at ? 'active' : 'not_configured'
+    planStatus: row.plan_expired ? 'expired' : row.plan_expires_at ? 'active' : 'not_configured',
+    isSuspended: Boolean(row.is_suspended)
   },
   passwordChangeRequired: Boolean(row.force_password_change),
   planExpired: Boolean(row.plan_expired),
+  companySuspended: Boolean(row.is_suspended),
   isPlatformAdmin: Boolean(row.is_platform_admin)
 });
 
@@ -104,7 +106,7 @@ export const login = async (db, payload, config) => {
   const email = normalizeEmail(payload.email);
   const result = await db.query(
     `SELECT u.id AS user_id, u.name AS user_name, u.email, u.password_hash, u.force_password_change,
-            o.id AS organization_id, o.name AS organization_name, o.plan_expires_at, membership.role,
+            o.id AS organization_id, o.name AS organization_name, o.plan_expires_at, o.is_suspended, membership.role,
             (o.plan_expires_at IS NOT NULL AND o.plan_expires_at < (now() AT TIME ZONE 'America/Sao_Paulo')::date) AS plan_expired,
             EXISTS (SELECT 1 FROM platform_administrators pa WHERE pa.user_id = u.id) AS is_platform_admin
        FROM users u
@@ -123,6 +125,12 @@ export const login = async (db, payload, config) => {
     throw new AppError('O plano desta empresa expirou. Entre em contato com a SEV para regularizar o acesso.', {
       statusCode: 403,
       code: 'PLAN_EXPIRED'
+    });
+  }
+  if (account.is_suspended && !account.is_platform_admin) {
+    throw new AppError('O acesso desta empresa está suspenso. Entre em contato com a SEV para regularizar.', {
+      statusCode: 403,
+      code: 'COMPANY_SUSPENDED'
     });
   }
 
@@ -146,7 +154,7 @@ export const findSession = async (db, token) => {
   if (!token) return null;
   const result = await db.query(
     `SELECT s.id AS session_id, s.csrf_token_hash, u.id AS user_id, u.name AS user_name, u.email, u.force_password_change,
-            o.id AS organization_id, o.name AS organization_name, o.plan_expires_at, membership.role,
+            o.id AS organization_id, o.name AS organization_name, o.plan_expires_at, o.is_suspended, membership.role,
             (o.plan_expires_at IS NOT NULL AND o.plan_expires_at < (now() AT TIME ZONE 'America/Sao_Paulo')::date) AS plan_expired,
             EXISTS (SELECT 1 FROM platform_administrators pa WHERE pa.user_id = u.id) AS is_platform_admin
        FROM sessions s

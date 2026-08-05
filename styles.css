@@ -606,12 +606,21 @@ tbody tr:hover{ background: var(--surface-soft); }
 .temporary-access-card small{ display:block; margin-top:13px; color:var(--ink-faint); font-size:11px; line-height:1.45; }
 .platform-list-panel{ margin-top:16px; }
 .platform-list-panel .settings-panel-head{ align-items:center; }
+.platform-list-tools{ display:flex; justify-content:flex-end; margin:0 0 14px; }
+.platform-search{ width:min(100%, 330px); }
 .platform-companies-table td strong, .platform-companies-table td small{ display:block; }
 .platform-companies-table td strong{ color:var(--ink); font-size:12.5px; font-weight:600; }
 .platform-companies-table td small{ max-width:230px; margin-top:3px; overflow:hidden; color:var(--ink-faint); font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
 .plan-update-control{ display:flex; align-items:center; gap:7px; min-width:230px; }
 .plan-update-control input{ width:137px; min-height:36px; padding:0 7px; border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--ink); font:12px var(--font-body); }
 .plan-update-control .secondary-button{ min-height:36px; padding:0 10px; }
+.platform-status-stack{ display:flex; flex-direction:column; align-items:flex-start; gap:5px; min-width:100px; }
+.platform-status-stack small, .platform-protected-note{ color:var(--ink-faint); font-size:10.5px; line-height:1.35; }
+.platform-row-actions{ display:flex; flex-direction:column; align-items:flex-start; gap:5px; min-width:164px; }
+.platform-row-actions .text-button{ padding:2px 0; text-align:left; }
+.platform-row-actions .text-button:disabled{ color:var(--ink-faint); cursor:not-allowed; opacity:.65; }
+.platform-row-actions .platform-delete-button{ color:var(--danger); }
+.platform-row-actions .platform-delete-button:hover{ color:#b31d37; }
 
 /* ----------------------------------------------------------- finance page */
 .payment-panel{
@@ -971,6 +980,8 @@ tbody tr:hover{ background: var(--surface-soft); }
   .platform-grid{ grid-template-columns:1fr; }
   .platform-company-form{ grid-template-columns:1fr; }
   .platform-form-actions{ grid-column:auto; }
+  .platform-list-tools{ justify-content:stretch; }
+  .platform-search{ width:100%; }
   .payment-panel{ padding:20px; }
   .payment-panel .settings-panel-head{ flex-direction:column; gap:8px; }
   .payment-chart-layout{ flex-direction:column; gap:24px; }

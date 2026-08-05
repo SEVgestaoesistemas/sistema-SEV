@@ -20,15 +20,15 @@
     window.location.replace('trocar-senha.html');
   };
 
-  const showExpiredPlanScreen = () => {
+  const showAccessBlockedScreen = ({ title, message }) => {
     document.documentElement.classList.remove('auth-pending');
     document.body.className = '';
     document.body.innerHTML = `
       <main class="signed-out-screen">
         <section class="signed-out-card" aria-labelledby="expiredPlanTitle">
           <img class="signed-out-logo" src="assets/sev-logo.jpeg" alt="SEV Gestão &amp; Sistemas">
-          <h1 id="expiredPlanTitle">Plano da empresa vencido</h1>
-          <p>O acesso desta empresa foi pausado porque a validade do plano chegou ao fim. Entre em contato com a SEV Gestão &amp; Sistemas para regularizar.</p>
+          <h1 id="expiredPlanTitle">${title}</h1>
+          <p>${message}</p>
           <a class="primary-button" href="login.html">Voltar para o acesso</a>
         </section>
       </main>`;
@@ -41,8 +41,18 @@
         redirectToPasswordChange();
         return null;
       }
+      if (user.companySuspended && !user.isPlatformAdmin) {
+        showAccessBlockedScreen({
+          title: 'Acesso da empresa suspenso',
+          message: 'O acesso desta empresa foi pausado pela administração. Entre em contato com a SEV Gestão & Sistemas para regularizar.'
+        });
+        return null;
+      }
       if (user.planExpired && !user.isPlatformAdmin) {
-        showExpiredPlanScreen();
+        showAccessBlockedScreen({
+          title: 'Plano da empresa vencido',
+          message: 'O acesso desta empresa foi pausado porque a validade do plano chegou ao fim. Entre em contato com a SEV Gestão & Sistemas para regularizar.'
+        });
         return null;
       }
       if (user.planExpired && user.isPlatformAdmin && currentPage !== 'plataforma.html') {

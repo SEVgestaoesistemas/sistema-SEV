@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { AppError } from '../errors.js';
-import { deleteSession, login, registerOrganizationOwner } from '../auth/service.js';
+import { changePassword, deleteSession, login, registerOrganizationOwner } from '../auth/service.js';
 import { requireAuth, requireCsrf } from '../auth/middleware.js';
 import { cookieOptions, createCsrfToken, hashSessionToken, sessionCookieName } from '../security/session.js';
 import { acceptInvitation } from '../team/service.js';
@@ -24,6 +24,11 @@ const acceptInvitationSchema = z.object({
   password: passwordSchema
 });
 
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(128),
+  newPassword: passwordSchema
+});
+
 const setSessionCookie = (reply, session, config) => {
   reply.setCookie(sessionCookieName, session.token, cookieOptions(config, session.expiresAt));
 };
@@ -32,6 +37,12 @@ export const registerAuthRoutes = async app => {
   app.post('/register', {
     config: { rateLimit: { max: 3, timeWindow: '1 hour' } }
   }, async (request, reply) => {
+    if (!app.config.publicRegistrationEnabled) {
+      throw new AppError('O cadastro de empresas é feito pela administração da plataforma.', {
+        statusCode: 403,
+        code: 'REGISTRATION_DISABLED'
+      });
+    }
     const payload = validate(registrationSchema, request.body);
     const account = await registerOrganizationOwner(app.db, payload, app.config);
     setSessionCookie(reply, account.session, app.config);
@@ -67,6 +78,9 @@ export const registerAuthRoutes = async app => {
       name: request.auth.name,
       email: request.auth.email,
       organization: request.auth.organization
+      , passwordChangeRequired: request.auth.passwordChangeRequired,
+      planExpired: request.auth.planExpired,
+      isPlatformAdmin: request.auth.isPlatformAdmin
     }
   }));
 
@@ -83,6 +97,18 @@ export const registerAuthRoutes = async app => {
     await deleteSession(app.db, request.auth.sessionId);
     reply.clearCookie(sessionCookieName, cookieOptions(app.config));
     return reply.code(204).send();
+  });
+
+  app.post('/password/change', { preHandler: [requireAuth, requireCsrf] }, async request => {
+    const payload = validate(changePasswordSchema, request.body);
+    await changePassword(app.db, {
+      userId: request.auth.id,
+      sessionId: request.auth.sessionId,
+      organizationId: request.auth.organization.id,
+      currentPassword: payload.currentPassword,
+      newPassword: payload.newPassword
+    });
+    return { updated: true };
   });
 
   app.post('/password/reset', async () => {

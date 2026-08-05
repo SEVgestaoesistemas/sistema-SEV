@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { requireAuth, requireCsrf } from '../auth/middleware.js';
+import { requireAccountAccess, requireAuth, requireCsrf } from '../auth/middleware.js';
 import { validate } from './validation.js';
 
 const notificationIdSchema = z.object({ id: z.string().uuid() });
 
 export const registerNotificationRoutes = async app => {
-  app.get('/notifications', { preHandler: [requireAuth] }, async request => {
+  app.get('/notifications', { preHandler: [requireAuth, requireAccountAccess] }, async request => {
     const result = await app.db.query(
       `SELECT n.id, n.category, n.title, n.message, n.created_at AS "createdAt",
               reads.read_at AS "readAt"
@@ -19,7 +19,7 @@ export const registerNotificationRoutes = async app => {
     return { notifications: result.rows };
   });
 
-  app.patch('/notifications/:id/read', { preHandler: [requireAuth, requireCsrf] }, async request => {
+  app.patch('/notifications/:id/read', { preHandler: [requireAuth, requireCsrf, requireAccountAccess] }, async request => {
     const params = validate(notificationIdSchema, request.params);
     const result = await app.db.query(
       `INSERT INTO notification_reads (notification_id, user_id)
@@ -33,7 +33,7 @@ export const registerNotificationRoutes = async app => {
     return { notification: result.rows[0] };
   });
 
-  app.post('/notifications/read-all', { preHandler: [requireAuth, requireCsrf] }, async request => {
+  app.post('/notifications/read-all', { preHandler: [requireAuth, requireCsrf, requireAccountAccess] }, async request => {
     await app.db.query(
       `INSERT INTO notification_reads (notification_id, user_id)
        SELECT n.id, $2 FROM notifications n

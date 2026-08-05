@@ -50,8 +50,11 @@ export const createInvitation = async (db, payload, actor, config) => {
 
 export const acceptInvitation = async (db, payload, config) => db.transaction(async transaction => {
   const invitationResult = await transaction.query(
-    `SELECT id, organization_id, recipient_name, email, role
-       FROM team_invitations
+    `SELECT invitation.id, invitation.organization_id, invitation.recipient_name, invitation.email, invitation.role,
+            organization.plan_expires_at,
+            (organization.plan_expires_at IS NOT NULL AND organization.plan_expires_at < CURRENT_DATE) AS plan_expired
+       FROM team_invitations invitation
+       JOIN organizations organization ON organization.id = invitation.organization_id
       WHERE token_hash = $1 AND expires_at > now() AND accepted_at IS NULL AND revoked_at IS NULL
       FOR UPDATE`,
     [hashSessionToken(payload.token)]
@@ -59,6 +62,12 @@ export const acceptInvitation = async (db, payload, config) => db.transaction(as
   const invitation = invitationResult.rows[0];
   if (!invitation) {
     throw new AppError('Convite inválido ou expirado.', { statusCode: 400, code: 'INVALID_INVITATION' });
+  }
+  if (invitation.plan_expired) {
+    throw new AppError('O plano desta empresa expirou. Entre em contato com a SEV para regularizar o acesso.', {
+      statusCode: 403,
+      code: 'PLAN_EXPIRED'
+    });
   }
 
   const existingUser = await transaction.query('SELECT id FROM users WHERE email = $1', [invitation.email]);

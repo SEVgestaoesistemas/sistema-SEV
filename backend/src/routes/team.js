@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { requireAuth, requireCsrf, requireRoles } from '../auth/middleware.js';
+import { requireAccountAccess, requireAuth, requireCsrf, requireRoles } from '../auth/middleware.js';
 import { createInvitation } from '../team/service.js';
 import { emailSchema, validate } from './validation.js';
 
@@ -11,7 +11,7 @@ const invitationSchema = z.object({
 });
 
 export const registerTeamRoutes = async app => {
-  app.get('/team', { preHandler: [requireAuth, requireRoles(teamRoles)] }, async request => {
+  app.get('/team', { preHandler: [requireAuth, requireAccountAccess, requireRoles(teamRoles)] }, async request => {
     const result = await app.db.query(
       `SELECT u.id, u.name, u.email, u.avatar_url AS "avatarUrl", membership.role,
               'active' AS status, membership.created_at AS "createdAt"
@@ -31,7 +31,7 @@ export const registerTeamRoutes = async app => {
   });
 
   app.post('/team/invitations', {
-    preHandler: [requireAuth, requireCsrf, requireRoles(teamRoles)]
+    preHandler: [requireAuth, requireCsrf, requireAccountAccess, requireRoles(teamRoles)]
   }, async (request, reply) => {
     const payload = validate(invitationSchema, request.body);
     const invitation = await createInvitation(app.db, payload, request.auth, app.config);

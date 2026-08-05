@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { recordAudit } from '../audit.js';
-import { requireAuth, requireCsrf, requireRoles } from '../auth/middleware.js';
+import { requireAccountAccess, requireAuth, requireCsrf, requireRoles } from '../auth/middleware.js';
 import { dateSchema, validate } from './validation.js';
 
 const normalizeDigits = value => value ? value.replace(/\D/g, '') || null : null;
@@ -34,7 +34,7 @@ const listQuerySchema = z.object({
 });
 
 export const registerExpenseRoutes = async app => {
-  app.get('/expenses', { preHandler: [requireAuth, requireRoles(financeRoles)] }, async request => {
+  app.get('/expenses', { preHandler: [requireAuth, requireAccountAccess, requireRoles(financeRoles)] }, async request => {
     const query = validate(listQuerySchema, request.query);
     const values = [request.auth.organization.id, query.limit];
     const statusCondition = query.status ? 'AND status = $3' : '';
@@ -53,7 +53,7 @@ export const registerExpenseRoutes = async app => {
   });
 
   app.post('/expenses', {
-    preHandler: [requireAuth, requireCsrf, requireRoles(financeRoles)]
+    preHandler: [requireAuth, requireCsrf, requireAccountAccess, requireRoles(financeRoles)]
   }, async (request, reply) => {
     const payload = validate(expenseSchema, request.body);
     const expense = await app.db.transaction(async transaction => {

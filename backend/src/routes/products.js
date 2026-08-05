@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { recordAudit } from '../audit.js';
-import { requireAuth, requireCsrf, requireRoles } from '../auth/middleware.js';
+import { requireAccountAccess, requireAuth, requireCsrf, requireRoles } from '../auth/middleware.js';
 import { validate } from './validation.js';
 
 const productSchema = z.object({
@@ -13,7 +13,7 @@ const productSchema = z.object({
 const inventoryRoles = ['owner', 'admin', 'inventory'];
 
 export const registerProductRoutes = async app => {
-  app.get('/products', { preHandler: [requireAuth, requireRoles(inventoryRoles)] }, async request => {
+  app.get('/products', { preHandler: [requireAuth, requireAccountAccess, requireRoles(inventoryRoles)] }, async request => {
     const result = await app.db.query(
       `SELECT id, name, sku, quantity, minimum_quantity AS "minimumQuantity", created_at AS "createdAt", updated_at AS "updatedAt"
          FROM products
@@ -25,7 +25,7 @@ export const registerProductRoutes = async app => {
   });
 
   app.post('/products', {
-    preHandler: [requireAuth, requireCsrf, requireRoles(inventoryRoles)]
+    preHandler: [requireAuth, requireCsrf, requireAccountAccess, requireRoles(inventoryRoles)]
   }, async (request, reply) => {
     const payload = validate(productSchema, request.body);
     const product = await app.db.transaction(async transaction => {

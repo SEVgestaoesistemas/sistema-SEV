@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { recordAudit } from '../audit.js';
-import { requireAuth, requireCsrf } from '../auth/middleware.js';
+import { requireAccountAccess, requireAuth, requireCsrf } from '../auth/middleware.js';
 import { validate } from './validation.js';
 
 const avatarUrlSchema = z.union([
@@ -13,7 +13,7 @@ const profileSchema = z.object({
 }).refine(value => value.name !== undefined || value.avatarUrl !== undefined);
 
 export const registerProfileRoutes = async app => {
-  app.get('/profile', { preHandler: [requireAuth] }, async request => {
+  app.get('/profile', { preHandler: [requireAuth, requireAccountAccess] }, async request => {
     const result = await app.db.query(
       'SELECT id, name, email, avatar_url AS "avatarUrl" FROM users WHERE id = $1',
       [request.auth.id]
@@ -21,7 +21,7 @@ export const registerProfileRoutes = async app => {
     return { profile: result.rows[0] };
   });
 
-  app.patch('/profile', { preHandler: [requireAuth, requireCsrf] }, async request => {
+  app.patch('/profile', { preHandler: [requireAuth, requireCsrf, requireAccountAccess] }, async request => {
     const payload = validate(profileSchema, request.body);
     const profile = await app.db.transaction(async transaction => {
       const fields = [];

@@ -14,6 +14,7 @@ import { registerProfileRoutes } from './routes/profile.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { registerTeamRoutes } from './routes/team.js';
 import { registerNotificationRoutes } from './routes/notifications.js';
+import { registerPlatformRoutes } from './routes/platform.js';
 
 export const buildApp = async (options = {}) => {
   const config = options.config || loadConfig();
@@ -56,20 +57,6 @@ export const buildApp = async (options = {}) => {
     keyGenerator: request => request.ip
   });
 
-  app.get('/', async () => ({ service: 'sev-backend', version: 'v1' }));
-  await app.register(registerHealthRoutes, { prefix: '/api/v1' });
-  await app.register(registerAuthRoutes, { prefix: '/api/v1/auth' });
-  await app.register(registerProductRoutes, { prefix: '/api/v1' });
-  await app.register(registerExpenseRoutes, { prefix: '/api/v1' });
-  await app.register(registerProfileRoutes, { prefix: '/api/v1' });
-  await app.register(registerSettingsRoutes, { prefix: '/api/v1' });
-  await app.register(registerTeamRoutes, { prefix: '/api/v1' });
-  await app.register(registerNotificationRoutes, { prefix: '/api/v1' });
-
-  app.setNotFoundHandler((request, reply) => reply.code(404).send({
-    error: { code: 'NOT_FOUND', message: 'Rota não encontrada.' }
-  }));
-
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof AppError) {
       return reply.code(error.statusCode).send({ error: { code: error.code, message: error.message } });
@@ -83,6 +70,21 @@ export const buildApp = async (options = {}) => {
     request.log.error(error);
     return reply.code(500).send({ error: { code: 'INTERNAL_ERROR', message: 'Ocorreu um erro interno.' } });
   });
+
+  app.get('/', async () => ({ service: 'sev-backend', version: 'v1' }));
+  await app.register(registerHealthRoutes, { prefix: '/api/v1' });
+  await app.register(registerAuthRoutes, { prefix: '/api/v1/auth' });
+  await app.register(registerProductRoutes, { prefix: '/api/v1' });
+  await app.register(registerExpenseRoutes, { prefix: '/api/v1' });
+  await app.register(registerProfileRoutes, { prefix: '/api/v1' });
+  await app.register(registerSettingsRoutes, { prefix: '/api/v1' });
+  await app.register(registerTeamRoutes, { prefix: '/api/v1' });
+  await app.register(registerNotificationRoutes, { prefix: '/api/v1' });
+  await app.register(registerPlatformRoutes, { prefix: '/api/v1' });
+
+  app.setNotFoundHandler((request, reply) => reply.code(404).send({
+    error: { code: 'NOT_FOUND', message: 'Rota não encontrada.' }
+  }));
 
   app.addHook('onClose', async () => {
     await db.close();

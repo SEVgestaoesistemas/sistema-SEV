@@ -39,6 +39,7 @@
   interfaceRoot.innerHTML = `
     <div class="profile-menu" id="profileMenu" hidden>
       <div class="profile-menu-head"><span class="avatar-sm" id="menuProfileAvatar"></span><div><strong id="menuProfileName"></strong><small id="menuProfileRole"></small></div></div>
+      <button type="button" id="platformAdminButton" hidden>Gerenciar clientes</button>
       <button type="button" id="editProfileButton">Editar perfil</button>
       <button type="button" class="profile-logout" id="logoutButton">Sair</button>
     </div>
@@ -103,6 +104,9 @@
     });
   });
   document.getElementById('editProfileButton').addEventListener('click', openModal);
+  document.getElementById('platformAdminButton').addEventListener('click', () => {
+    window.location.assign('plataforma.html');
+  });
   document.getElementById('closeProfileModal').addEventListener('click', closeModal);
   profileModal.addEventListener('click', event => { if (event.target === profileModal) closeModal(); });
   document.addEventListener('click', event => {
@@ -168,8 +172,9 @@
       ...profile,
       name: user.name,
       email: user.email,
-      role: roleLabels[user.organization?.role] || 'Usuário'
+      role: user.isPlatformAdmin ? 'Administrador da plataforma' : (roleLabels[user.organization?.role] || 'Usuário')
     };
+    document.getElementById('platformAdminButton').hidden = !user.isPlatformAdmin;
     renderProfile();
   });
 })();

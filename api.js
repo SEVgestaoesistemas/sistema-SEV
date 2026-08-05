@@ -114,6 +114,26 @@
         clearSessionState();
       }
     },
+    changePassword: async password => request('/auth/password/change', {
+      method: 'POST',
+      body: password,
+      csrf: true
+    }),
+    bootstrapPlatformAdmin: async payload => (await request('/platform/bootstrap', {
+      method: 'POST',
+      body: payload
+    })).administrator,
+    getPlatformCompanies: async () => (await request('/platform/companies')).companies,
+    createPlatformCompany: async company => request('/platform/companies', {
+      method: 'POST',
+      body: company,
+      csrf: true
+    }),
+    updatePlatformCompanyPlan: async (id, planExpiresAt) => (await request(`/platform/companies/${encodeURIComponent(id)}/plan`, {
+      method: 'PATCH',
+      body: { planExpiresAt },
+      csrf: true
+    })).company,
     getProducts: async () => (await request('/products')).products,
     createProduct: async product => (await request('/products', {
       method: 'POST',

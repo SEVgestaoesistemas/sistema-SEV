@@ -17,6 +17,8 @@ const environmentSchema = z.object({
     /^\d+\s*(second|seconds|minute|minutes|hour|hours)$/i,
     'LOGIN_RATE_LIMIT_WINDOW deve usar um valor como "15 minutes".'
   ).default('15 minutes'),
+  PUBLIC_REGISTRATION_ENABLED: z.enum(['true', 'false']).default('false'),
+  PLATFORM_BOOTSTRAP_TOKEN: optionalText,
   TRUST_PROXY: z.enum(['true', 'false']).optional(),
   DATABASE_SSL: z.enum(['true', 'false']).optional(),
   DATABASE_SSL_CA_FILE: optionalText,
@@ -47,6 +49,8 @@ export const loadConfig = (environment = process.env) => {
     sessionSameSite: values.SESSION_SAME_SITE,
     loginRateLimitMax: values.LOGIN_RATE_LIMIT_MAX,
     loginRateLimitWindow: values.LOGIN_RATE_LIMIT_WINDOW,
+    publicRegistrationEnabled: values.PUBLIC_REGISTRATION_ENABLED === 'true',
+    platformBootstrapToken: values.PLATFORM_BOOTSTRAP_TOKEN,
     trustProxy: values.TRUST_PROXY ? values.TRUST_PROXY === 'true' : values.NODE_ENV === 'production',
     databaseUrl: values.DATABASE_URL,
     databaseSsl: values.DATABASE_SSL ? values.DATABASE_SSL === 'true' : values.NODE_ENV === 'production',

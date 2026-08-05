@@ -19,3 +19,8 @@ test('limite de login aceita configuração temporária por ambiente', () => {
   assert.equal(config.loginRateLimitMax, 20);
   assert.equal(config.loginRateLimitWindow, '15 minutes');
 });
+
+test('cadastro público fica desativado por padrão e pode ser explicitamente habilitado no desenvolvimento', () => {
+  assert.equal(loadConfig({ NODE_ENV: 'test' }).publicRegistrationEnabled, false);
+  assert.equal(loadConfig({ NODE_ENV: 'test', PUBLIC_REGISTRATION_ENABLED: 'true' }).publicRegistrationEnabled, true);
+});

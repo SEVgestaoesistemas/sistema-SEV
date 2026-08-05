@@ -152,6 +152,40 @@
           </section>
           <div class="settings-actions"><p class="settings-status" id="settingsStatus" role="status" aria-live="polite"></p><button class="primary-button" type="submit">Salvar alterações</button></div>
         </form>`
+    },
+    plataforma: {
+      title: 'Administração da plataforma',
+      subtitle: 'Empresas, planos e acessos de clientes',
+      content: `
+        <section class="module-hero platform-hero">
+          <p class="eyebrow">SEV Gestão &amp; Sistemas</p>
+          <h1>Empresas e assinaturas</h1>
+          <p>Crie o acesso inicial de cada cliente, defina a validade manualmente e acompanhe a situação de pagamento.</p>
+        </section>
+        <section class="platform-grid">
+          <section class="settings-panel" aria-labelledby="platformCompanyFormTitle">
+            <div class="settings-panel-head"><div><h2 id="platformCompanyFormTitle">Nova empresa</h2><p>O responsável recebe uma senha temporária e precisará trocá-la no primeiro acesso.</p></div></div>
+            <form class="platform-company-form" id="platformCompanyForm">
+              <label class="field"><span>Nome da empresa</span><input name="companyName" type="text" minlength="2" maxlength="100" autocomplete="organization" required></label>
+              <label class="field"><span>Nome do responsável</span><input name="administratorName" type="text" minlength="3" maxlength="100" autocomplete="name" required></label>
+              <label class="field"><span>E-mail do responsável</span><input name="administratorEmail" type="email" maxlength="160" autocomplete="email" required></label>
+              <label class="field"><span>Validade do plano</span><input name="planExpiresAt" type="date" required></label>
+              <div class="platform-form-actions"><p class="settings-status" id="platformCompanyStatus" role="status" aria-live="polite"></p><button class="primary-button" type="submit">Criar empresa</button></div>
+            </form>
+          </section>
+          <aside class="temporary-access-card" id="temporaryAccessCard" hidden aria-live="polite">
+            <span class="temporary-access-kicker">Acesso temporário criado</span>
+            <h2 id="temporaryAccessName">Responsável</h2>
+            <p id="temporaryAccessEmail"></p>
+            <label>Senha temporária<input id="temporaryAccessPassword" type="text" readonly></label>
+            <button class="secondary-button" id="copyTemporaryPassword" type="button">Copiar senha</button>
+            <small>Entregue esta senha ao cliente por um canal seguro. Ela não poderá ser consultada novamente.</small>
+          </aside>
+        </section>
+        <section class="settings-panel platform-list-panel" aria-labelledby="platformCompaniesTitle">
+          <div class="settings-panel-head"><div><h2 id="platformCompaniesTitle">Empresas cadastradas</h2><p id="platformCompaniesSummary">Carregando empresas…</p></div><button class="secondary-button" id="refreshPlatformCompanies" type="button">Atualizar lista</button></div>
+          <div class="table-wrap"><table class="platform-companies-table"><thead><tr><th>Empresa</th><th>Responsável</th><th>Validade do plano</th><th>Pagamento</th><th>Atualizar validade</th></tr></thead><tbody id="platformCompaniesBody"></tbody></table></div>
+        </section>`
     }
   };
 

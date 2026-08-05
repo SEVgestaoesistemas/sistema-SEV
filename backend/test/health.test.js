@@ -11,6 +11,8 @@ const config = {
   sessionSameSite: 'lax',
   loginRateLimitMax: 5,
   loginRateLimitWindow: '15 minutes',
+  publicRegistrationEnabled: false,
+  platformBootstrapToken: undefined,
   trustProxy: false,
   databaseUrl: undefined,
   databaseSsl: false,
@@ -51,5 +53,17 @@ test('login respeita o limite configurado por ambiente', async () => {
   const limited = await request();
   assert.equal(limited.statusCode, 429);
   assert.equal(limited.headers['x-ratelimit-limit'], '2');
+  await app.close();
+});
+
+test('cadastro público é rejeitado quando a plataforma está em modo por assinatura', async () => {
+  const app = await buildApp({ config, db: database, logger: false });
+  const response = await app.inject({
+    method: 'POST',
+    url: '/api/v1/auth/register',
+    payload: { organizationName: 'Empresa Teste', name: 'Usuário Teste', email: 'teste@sev.com', password: 'SenhaSegura2026' }
+  });
+  assert.equal(response.statusCode, 403);
+  assert.equal(response.json().error.code, 'REGISTRATION_DISABLED');
   await app.close();
 });

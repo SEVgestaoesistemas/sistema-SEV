@@ -18,12 +18,7 @@
         <p>Entre para acessar os dados da sua empresa.</p>
       </div>
 
-      <div class="auth-tabs" role="tablist" aria-label="Acesso à conta">
-        <button id="showLogin" class="active" type="button" role="tab" aria-selected="true">Entrar</button>
-        <button id="showRegister" type="button" role="tab" aria-selected="false">Criar empresa</button>
-      </div>
-
-      <section id="loginPanel" role="tabpanel">
+      <section id="loginPanel">
         <form class="login-form" id="loginForm">
           <label class="field"><span>E-mail</span><input name="email" type="email" autocomplete="email" maxlength="160" required></label>
           <label class="field"><span>Senha</span><input name="password" type="password" autocomplete="current-password" maxlength="128" required></label>
@@ -32,18 +27,6 @@
         </form>
       </section>
 
-      <section id="registerPanel" role="tabpanel" hidden>
-        <form class="login-form" id="registerForm">
-          <label class="field"><span>Nome da empresa</span><input name="organizationName" type="text" autocomplete="organization" minlength="2" maxlength="100" required></label>
-          <label class="field"><span>Seu nome completo</span><input name="name" type="text" autocomplete="name" minlength="3" maxlength="100" required></label>
-          <label class="field"><span>E-mail</span><input name="email" type="email" autocomplete="email" maxlength="160" required></label>
-          <label class="field"><span>Senha</span><input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required aria-describedby="passwordHelp"></label>
-          <small id="passwordHelp">Use ao menos 12 caracteres, com letras maiúsculas, minúsculas e números.</small>
-          <label class="field"><span>Confirmar senha</span><input name="confirmPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label>
-          <p class="login-status" id="registerStatus" role="status" aria-live="polite"></p>
-          <button class="primary-button" type="submit" data-label="Criar empresa">Criar empresa</button>
-        </form>
-      </section>
     </section>
   </main>
   <script src="api.js"></script>

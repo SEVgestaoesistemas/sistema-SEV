@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import { AppError } from '../errors.js';
 import { recordAudit } from '../audit.js';
 import { hashPassword, verifyPassword } from '../security/password.js';
@@ -11,15 +11,32 @@ const toPublicUser = row => ({
   organization: {
     id: row.organization_id,
     name: row.organization_name,
-    role: row.role
-  }
+    role: row.role,
+    planExpiresAt: row.plan_expires_at || null,
+    planStatus: row.plan_expired ? 'expired' : row.plan_expires_at ? 'active' : 'not_configured'
+  },
+  passwordChangeRequired: Boolean(row.force_password_change),
+  planExpired: Boolean(row.plan_expired),
+  isPlatformAdmin: Boolean(row.is_platform_admin)
 });
 
 const normalizeEmail = email => email.trim().toLowerCase();
-const createSlug = value => {
+export const createSlug = value => {
   const base = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64);
   return `${base || 'empresa'}-${randomUUID().slice(0, 8)}`;
+};
+
+export const generateTemporaryPassword = () => {
+  const groups = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnopqrstuvwxyz', '23456789', '!@#$%*-_'];
+  const characters = groups.join('');
+  const password = groups.map(group => group[randomInt(group.length)]);
+  while (password.length < 16) password.push(characters[randomInt(characters.length)]);
+  for (let index = password.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomInt(index + 1);
+    [password[index], password[swapIndex]] = [password[swapIndex], password[index]];
+  }
+  return password.join('');
 };
 
 export const createStoredSession = async (db, { userId, organizationId, config }) => {
@@ -86,8 +103,10 @@ export const registerOrganizationOwner = async (db, payload, config) => {
 export const login = async (db, payload, config) => {
   const email = normalizeEmail(payload.email);
   const result = await db.query(
-    `SELECT u.id AS user_id, u.name AS user_name, u.email, u.password_hash,
-            o.id AS organization_id, o.name AS organization_name, membership.role
+    `SELECT u.id AS user_id, u.name AS user_name, u.email, u.password_hash, u.force_password_change,
+            o.id AS organization_id, o.name AS organization_name, o.plan_expires_at, membership.role,
+            (o.plan_expires_at IS NOT NULL AND o.plan_expires_at < CURRENT_DATE) AS plan_expired,
+            EXISTS (SELECT 1 FROM platform_administrators pa WHERE pa.user_id = u.id) AS is_platform_admin
        FROM users u
        JOIN organization_memberships membership ON membership.user_id = u.id
        JOIN organizations o ON o.id = membership.organization_id
@@ -99,6 +118,12 @@ export const login = async (db, payload, config) => {
   const account = result.rows[0];
   if (!account || !(await verifyPassword(payload.password, account.password_hash))) {
     throw new AppError('E-mail ou senha inválidos.', { statusCode: 401, code: 'INVALID_CREDENTIALS' });
+  }
+  if (account.plan_expired && !account.is_platform_admin) {
+    throw new AppError('O plano desta empresa expirou. Entre em contato com a SEV para regularizar o acesso.', {
+      statusCode: 403,
+      code: 'PLAN_EXPIRED'
+    });
   }
 
   return db.transaction(async transaction => {
@@ -120,8 +145,10 @@ export const login = async (db, payload, config) => {
 export const findSession = async (db, token) => {
   if (!token) return null;
   const result = await db.query(
-    `SELECT s.id AS session_id, s.csrf_token_hash, u.id AS user_id, u.name AS user_name, u.email,
-            o.id AS organization_id, o.name AS organization_name, membership.role
+    `SELECT s.id AS session_id, s.csrf_token_hash, u.id AS user_id, u.name AS user_name, u.email, u.force_password_change,
+            o.id AS organization_id, o.name AS organization_name, o.plan_expires_at, membership.role,
+            (o.plan_expires_at IS NOT NULL AND o.plan_expires_at < CURRENT_DATE) AS plan_expired,
+            EXISTS (SELECT 1 FROM platform_administrators pa WHERE pa.user_id = u.id) AS is_platform_admin
        FROM sessions s
        JOIN users u ON u.id = s.user_id
        JOIN organizations o ON o.id = s.organization_id
@@ -138,3 +165,28 @@ export const findSession = async (db, token) => {
 
 export const deleteSession = (db, sessionId) => db.query('DELETE FROM sessions WHERE id = $1', [sessionId]);
 export const hashCsrfToken = hashSessionToken;
+
+export const changePassword = async (db, { userId, sessionId, currentPassword, newPassword, organizationId }) => db.transaction(async transaction => {
+  const result = await transaction.query(
+    'SELECT password_hash FROM users WHERE id = $1 AND is_active = true FOR UPDATE',
+    [userId]
+  );
+  const user = result.rows[0];
+  if (!user || !(await verifyPassword(currentPassword, user.password_hash))) {
+    throw new AppError('A senha atual está incorreta.', { statusCode: 401, code: 'INVALID_CREDENTIALS' });
+  }
+  const passwordHash = await hashPassword(newPassword);
+  await transaction.query(
+    'UPDATE users SET password_hash = $2, force_password_change = false WHERE id = $1',
+    [userId, passwordHash]
+  );
+  await transaction.query('DELETE FROM sessions WHERE user_id = $1 AND id <> $2', [userId, sessionId]);
+  await recordAudit(transaction, {
+    organizationId,
+    actorUserId: userId,
+    action: 'auth.password_changed',
+    entityType: 'user',
+    entityId: userId,
+    metadata: { revokedOtherSessions: true }
+  });
+});

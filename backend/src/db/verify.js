@@ -10,7 +10,8 @@ const requiredTables = [
   'stock_movements',
   'expenses',
   'notifications',
-  'audit_logs'
+  'audit_logs',
+  'platform_administrators'
 ];
 
 const config = loadConfig();

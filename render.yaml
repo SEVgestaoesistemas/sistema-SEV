@@ -18,6 +18,8 @@ services:
         value: 0.0.0.0
       - key: FRONTEND_ORIGIN
         value: https://sevgestaoesistemas.github.io
+      - key: FRONTEND_URL
+        value: https://sevgestaoesistemas.github.io/sistema-SEV/
       - key: SESSION_TTL_DAYS
         value: "7"
       - key: SESSION_SAME_SITE

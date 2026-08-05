@@ -43,7 +43,7 @@ export const createInvitation = async (db, payload, actor, config) => {
       metadata: { role: invitation.role }
     });
 
-    const baseUrl = config.allowedOrigins[0].replace(/\/$/, '');
+    const baseUrl = config.frontendUrl;
     return { ...invitation, inviteLink: `${baseUrl}/#invite=${token}` };
   });
 };

@@ -19,7 +19,10 @@ const insertOrganization = async (client, name) => {
 };
 
 test('equipe e configurações permanecem isoladas por organização', { skip: !enabled }, async () => {
-  const config = loadConfig();
+  const config = {
+    ...loadConfig(),
+    frontendUrl: 'https://sevgestaoesistemas.github.io/sistema-SEV'
+  };
   assert.ok(config.databaseUrl, 'DATABASE_URL is required for the team and settings integration test.');
 
   const database = createDatabase(config);
@@ -80,7 +83,10 @@ test('equipe e configurações permanecem isoladas por organização', { skip: !
       payload: { name: 'Invited Person', email: `invite-${randomUUID()}@test.invalid`, role: 'finance' }
     });
     assert.equal(invitation.statusCode, 201);
-    assert.match(invitation.json().invitation.inviteLink, /#invite=/);
+    assert.match(
+      invitation.json().invitation.inviteLink,
+      /^https:\/\/sevgestaoesistemas\.github\.io\/sistema-SEV\/#invite=/
+    );
 
     const updatedRole = await app.inject({
       method: 'PATCH', url: `/api/v1/team/members/${fixture.memberAId}`, headers: headersA, payload: { role: 'finance' }

@@ -191,6 +191,25 @@
       body: { confirmationName },
       csrf: true
     }),
+    getPlatformCompanySupportConversations: async id => request(`/platform/companies/${encodeURIComponent(id)}/support/conversations`),
+    getPlatformSupportEscalations: async () => (await request('/platform/support/escalations')).escalations,
+    getSettings: async () => (await request('/settings')).settings,
+    updateSettings: async settings => (await request('/settings', {
+      method: 'PATCH',
+      body: settings,
+      csrf: true
+    })).settings,
+    getTeam: async () => (await request('/team')).members,
+    createTeamInvitation: async invitation => (await request('/team/invitations', {
+      method: 'POST',
+      body: invitation,
+      csrf: true
+    })).invitation,
+    updateTeamMemberRole: async (id, role) => (await request(`/team/members/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: { role },
+      csrf: true
+    })).member,
     getProducts: async () => (await request('/products')).products,
     createProduct: async product => (await request('/products', {
       method: 'POST',

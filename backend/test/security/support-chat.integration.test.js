@@ -42,6 +42,7 @@ test('chat de suporte é limitado e isolado por organização no RLS', { skip: !
         "INSERT INTO organization_memberships (organization_id, user_id, role) VALUES ($1, $2, 'owner'), ($3, $4, 'owner')",
         [organizationA, userA.rows[0].id, organizationB, userB.rows[0].id]
       );
+      await transaction.query('INSERT INTO platform_administrators (user_id) VALUES ($1)', [userA.rows[0].id]);
       const sessionA = await createStoredSession(transaction, { userId: userA.rows[0].id, organizationId: organizationA, config });
       const sessionB = await createStoredSession(transaction, { userId: userB.rows[0].id, organizationId: organizationB, config });
       return {
@@ -98,13 +99,41 @@ test('chat de suporte é limitado e isolado por organização no RLS', { skip: !
     assert.equal(offScopeQuestion.json().needsHuman, true);
     assert.deepEqual(askedQuestions, ['Como cadastro um produto?', 'Conte uma piada']);
 
+    const tenantA = database.forTenant({ organizationId: fixture.organizationA, userId: fixture.userAId });
+    const hiddenForeignConversation = await tenantA.query(
+      'SELECT id FROM support_chat_conversations WHERE organization_id = $1',
+      [fixture.organizationB]
+    );
+    assert.equal(hiddenForeignConversation.rowCount, 0);
+    await assert.rejects(
+      tenantA.query(
+        `INSERT INTO support_chat_conversations (organization_id, user_id, question, answer, in_scope, needs_human)
+         VALUES ($1, $2, 'Pergunta estrangeira', 'Resposta', true, false)`,
+        [fixture.organizationB, fixture.userBId]
+      ),
+      error => error.code === '42501'
+    );
+
+    const escalations = await app.inject({ method: 'GET', url: '/api/v1/platform/support/escalations', headers: headersA });
+    assert.equal(escalations.statusCode, 200);
+    assert.equal(escalations.json().escalations.some(item => item.companyId === fixture.organizationB && item.question === 'Conte uma piada'), true);
+
+    const companyHistory = await app.inject({
+      method: 'GET', url: `/api/v1/platform/companies/${fixture.organizationB}/support/conversations`, headers: headersA
+    });
+    assert.equal(companyHistory.statusCode, 200);
+    assert.equal(companyHistory.json().conversations.length, 1);
+    assert.equal(companyHistory.json().conversations[0].question, 'Conte uma piada');
+
+    const nonPlatformEscalations = await app.inject({ method: 'GET', url: '/api/v1/platform/support/escalations', headers: headersB });
+    assert.equal(nonPlatformEscalations.statusCode, 403);
+
     const limited = await app.inject({
       method: 'POST', url: '/api/v1/support/chat', headers: headersA, payload: { message: 'Como crio uma venda?' }
     });
     assert.equal(limited.statusCode, 429);
     assert.equal(limited.json().error.code, 'SUPPORT_USER_RATE_LIMIT');
 
-    const tenantA = database.forTenant({ organizationId: fixture.organizationA, userId: fixture.userAId });
     const hiddenForeignUsage = await tenantA.query(
       'SELECT user_id FROM support_chat_usage WHERE organization_id = $1',
       [fixture.organizationB]

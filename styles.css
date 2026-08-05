@@ -639,6 +639,12 @@ tbody tr:hover{ background: var(--surface-soft); }
 .platform-actions-divider{ height:1px; margin:5px 3px; background:var(--border); }
 .platform-menu-trash{ margin-right:7px; font-size:13px; line-height:1; }
 .platform-actions-popover .platform-protected-note{ display:block; padding:5px 9px 3px; }
+.platform-support-panel .settings-panel-head{ align-items:center; }
+.platform-escalations-table td strong{ font-size:12.5px; font-weight:600; }
+.platform-support-text{ max-width:330px; color:var(--ink-soft); line-height:1.45; white-space:pre-wrap; }
+.platform-support-modal-card{ width:min(100%, 1040px); }
+.platform-support-modal-status{ min-height:18px; margin:0 0 12px; color:var(--ink-faint); font-size:12px; }
+.platform-support-history-table{ min-width:780px; }
 
 /* ----------------------------------------------------------- finance page */
 .payment-panel{
@@ -949,6 +955,7 @@ tbody tr:hover{ background: var(--surface-soft); }
 .setting-toggle small{ display:block; max-width:560px; margin-top:4px; color:var(--ink-faint); font-size:12px; line-height:1.45; }
 .settings-actions{ display:flex; align-items:center; justify-content:flex-end; gap:16px; }
 .settings-status{ margin:0 auto 0 0; color:var(--success); font-size:13px; }
+.settings-status.error{ color:var(--danger); }
 .primary-button{
   min-height:42px; padding:0 17px; border:0; border-radius:var(--radius-sm);
   background:var(--brand); color:#fff; font:inherit; font-size:13px; font-weight:700; cursor:pointer;
@@ -967,6 +974,16 @@ tbody tr:hover{ background: var(--surface-soft); }
 .team-form .primary-button{ white-space:nowrap; }
 .team-status{ min-height:19px; margin:14px 0 0; color:var(--success); font-size:13px; }
 .team-status.error{ color:var(--danger); }
+.team-invitation-card{ display:flex; flex-direction:column; gap:8px; margin-top:16px; padding:15px; border:1px solid color-mix(in srgb, var(--success) 28%, var(--border)); border-radius:var(--radius-md); background:var(--success-tint); }
+.team-invitation-card[hidden]{ display:none; }
+.team-invitation-card strong{ color:var(--success); font-size:13px; }
+.team-invitation-card p,.team-invitation-card small{ margin:0; color:var(--ink-soft); font-size:12px; line-height:1.45; }
+.team-invitation-card label{ display:flex; flex-direction:column; gap:6px; color:var(--ink-soft); font-size:11px; font-weight:700; }
+.team-invitation-card input{ width:100%; min-height:35px; padding:0 9px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); color:var(--ink); font:12px var(--font-body); }
+.team-invitation-card .secondary-button{ align-self:flex-start; }
+.team-table select{ min-height:34px; padding:0 25px 0 8px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); color:var(--ink); font:12px var(--font-body); }
+.team-save-role{ min-height:34px; padding:0 10px; }
+.team-protected-role{ color:var(--ink-faint); font-size:11px; line-height:1.35; }
 .member-cell{ display:flex; align-items:center; gap:10px; }
 .member-initials{
   display:flex; align-items:center; justify-content:center; flex-shrink:0;

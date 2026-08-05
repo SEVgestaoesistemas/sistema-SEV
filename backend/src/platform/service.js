@@ -108,6 +108,37 @@ export const listCompanies = async db => {
   return result.rows.map(toCompany);
 };
 
+export const listCompanySupportConversations = async (db, companyId) => {
+  const company = await requireCompany(db, companyId);
+  const result = await db.query(
+    `SELECT conversation.id, conversation.question, conversation.answer,
+            conversation.in_scope AS "inScope", conversation.needs_human AS "needsHuman",
+            conversation.created_at AS "createdAt", user_account.name AS "userName"
+       FROM support_chat_conversations conversation
+       LEFT JOIN users user_account ON user_account.id = conversation.user_id
+      WHERE conversation.organization_id = $1
+      ORDER BY conversation.created_at DESC
+      LIMIT 100`,
+    [companyId]
+  );
+  return { company, conversations: result.rows };
+};
+
+export const listSupportEscalations = async db => {
+  const result = await db.query(
+    `SELECT conversation.id, conversation.question, conversation.answer,
+            conversation.in_scope AS "inScope", conversation.created_at AS "createdAt",
+            organization.id AS "companyId", organization.name AS "companyName", user_account.name AS "userName"
+       FROM support_chat_conversations conversation
+       JOIN organizations organization ON organization.id = conversation.organization_id
+       LEFT JOIN users user_account ON user_account.id = conversation.user_id
+      WHERE conversation.needs_human = true
+      ORDER BY conversation.created_at DESC
+      LIMIT 100`
+  );
+  return result.rows;
+};
+
 export const createCompany = async (db, payload, actor) => db.transaction(async transaction => {
   const email = normalizeEmail(payload.administratorEmail);
   const existingUser = await transaction.query('SELECT id FROM users WHERE email = $1', [email]);

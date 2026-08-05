@@ -4,7 +4,9 @@ import {
   bootstrapPlatformAdministrator,
   createCompany,
   deleteCompanyPermanently,
+  listCompanySupportConversations,
   listCompanies,
+  listSupportEscalations,
   resetCompanyAdministratorPassword,
   setCompanySuspension,
   updateCompanyAdministrator,
@@ -41,6 +43,17 @@ export const registerPlatformRoutes = async app => {
   app.get('/platform/companies', {
     preHandler: [requireAuth, requirePlatformAdmin]
   }, async () => ({ companies: await listCompanies(app.db) }));
+
+  app.get('/platform/companies/:id/support/conversations', {
+    preHandler: [requireAuth, requirePlatformAdmin]
+  }, async request => {
+    const { id } = validate(companyIdSchema, request.params);
+    return listCompanySupportConversations(app.db, id);
+  });
+
+  app.get('/platform/support/escalations', {
+    preHandler: [requireAuth, requirePlatformAdmin]
+  }, async () => ({ escalations: await listSupportEscalations(app.db) }));
 
   app.post('/platform/companies', {
     preHandler: [requireAuth, requireCsrf, requirePlatformAdmin]

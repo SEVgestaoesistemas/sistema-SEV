@@ -162,27 +162,28 @@
       title: 'Equipe',
       subtitle: 'Usuários e permissões de acesso',
       content: `
-        <section class="module-hero"><p class="eyebrow">Acessos</p><h1>Equipe</h1><p>Cadastre integrantes e defina a função inicial de cada pessoa.</p></section>
+        <section class="module-hero"><p class="eyebrow">Acessos</p><h1>Equipe</h1><p>Convide integrantes da empresa e defina permissões para cada função.</p></section>
         <section class="team-panel" aria-labelledby="addMemberTitle">
-          <div class="settings-panel-head"><div><h2 id="addMemberTitle">Adicionar integrante</h2><p>O cadastro é local e não envia convite por e-mail.</p></div></div>
+          <div class="settings-panel-head"><div><h2 id="addMemberTitle">Convidar integrante</h2><p>Compartilhe o link seguro gerado com a pessoa para concluir o cadastro.</p></div></div>
           <form class="team-form" id="teamForm">
             <label class="field"><span>Nome completo</span><input name="memberName" type="text" minlength="3" maxlength="80" required autocomplete="name"></label>
             <label class="field"><span>E-mail</span><input name="memberEmail" type="email" maxlength="120" required autocomplete="email"></label>
-            <label class="field"><span>Função</span><select name="memberRole"><option value="admin">Administrador</option><option value="manager">Gerente</option><option value="operator">Operacional</option></select></label>
-            <button class="primary-button" type="submit">Adicionar integrante</button>
+            <label class="field"><span>Função</span><select name="memberRole"><option value="admin">Administrador</option><option value="finance">Financeiro</option><option value="inventory">Estoque</option><option value="operator">Operacional</option></select></label>
+            <button class="primary-button" type="submit">Gerar convite</button>
           </form>
           <p class="team-status" id="teamStatus" role="status" aria-live="polite"></p>
+          <aside class="team-invitation-card" id="teamInvitationCard" hidden aria-live="polite"><strong>Convite criado</strong><p id="teamInvitationRecipient"></p><label>Link seguro do convite<input id="teamInvitationLink" type="text" readonly></label><button class="secondary-button" id="copyTeamInvitationLink" type="button">Copiar link</button><small>O convite expira em 7 dias e o integrante define a própria senha ao aceitá-lo.</small></aside>
         </section>
         <section class="team-panel" aria-labelledby="teamListTitle">
-          <div class="settings-panel-head"><div><h2 id="teamListTitle">Integrantes cadastrados</h2><p id="teamCount">0 integrantes ativos</p></div></div>
-          <div class="table-wrap"><table class="team-table"><thead><tr><th>Integrante</th><th>Função</th><th>Status</th></tr></thead><tbody id="teamTableBody"></tbody></table></div>
+          <div class="settings-panel-head"><div><h2 id="teamListTitle">Integrantes da empresa</h2><p id="teamCount">Carregando integrantes…</p></div></div>
+          <div class="table-wrap"><table class="team-table"><thead><tr><th>Integrante</th><th>Função</th><th>Status</th><th>Ações</th></tr></thead><tbody id="teamTableBody"></tbody></table></div>
         </section>`
     },
     configuracoes: {
       title: 'Configurações',
       subtitle: 'Preferências gerais do sistema',
       content: `
-        <section class="module-hero"><p class="eyebrow">Preferências</p><h1>Configurações</h1><p>Defina as preferências gerais usadas neste dispositivo.</p></section>
+        <section class="module-hero"><p class="eyebrow">Preferências</p><h1>Configurações</h1><p>Defina as preferências gerais usadas por toda a empresa.</p></section>
         <form class="settings-form" id="settingsForm">
           <section class="settings-panel" aria-labelledby="businessSettingsTitle">
             <div class="settings-panel-head"><div><h2 id="businessSettingsTitle">Empresa</h2><p>Informações exibidas no sistema.</p></div></div>
@@ -240,6 +241,10 @@
           <div class="platform-list-tools"><label class="stock-search platform-search"><span class="sr-only">Buscar empresa ou responsável</span><input id="platformCompanySearch" type="search" placeholder="Buscar empresa, responsável ou e-mail"></label></div>
           <div class="table-wrap"><table class="platform-companies-table"><thead><tr><th>Empresa</th><th>Responsável</th><th>Validade do plano</th><th>Status</th><th>Atualizar validade</th><th>Ações</th></tr></thead><tbody id="platformCompaniesBody"></tbody></table></div>
         </section>
+        <section class="settings-panel platform-list-panel platform-support-panel" aria-labelledby="platformEscalationsTitle">
+          <div class="settings-panel-head"><div><h2 id="platformEscalationsTitle">Encaminhamentos para atendimento humano</h2><p id="platformEscalationsSummary">Carregando encaminhamentos…</p></div><button class="secondary-button" id="refreshPlatformEscalations" type="button">Atualizar</button></div>
+          <div class="table-wrap"><table class="platform-escalations-table"><thead><tr><th>Empresa</th><th>Pergunta</th><th>Cliente</th><th>Data</th></tr></thead><tbody id="platformEscalationsBody"></tbody></table></div>
+        </section>
         <div class="profile-modal" id="platformAdministratorModal" role="dialog" aria-modal="true" aria-labelledby="platformAdministratorModalTitle" hidden>
           <div class="profile-modal-card">
             <div class="profile-modal-head"><div><h2 id="platformAdministratorModalTitle">Editar responsável</h2><p id="platformAdministratorModalCompany"></p></div><button class="modal-close" id="closePlatformAdministratorModal" type="button" aria-label="Fechar">×</button></div>
@@ -248,6 +253,13 @@
               <label class="field"><span>E-mail do responsável</span><input name="administratorEmail" type="email" maxlength="160" autocomplete="email" required></label>
               <div class="profile-modal-actions"><p id="platformAdministratorStatus" role="status" aria-live="polite"></p><button class="primary-button" type="submit">Salvar responsável</button></div>
             </form>
+          </div>
+        </div>
+        <div class="profile-modal" id="platformSupportModal" role="dialog" aria-modal="true" aria-labelledby="platformSupportModalTitle" hidden>
+          <div class="profile-modal-card platform-support-modal-card">
+            <div class="profile-modal-head"><div><h2 id="platformSupportModalTitle">Histórico do suporte com IA</h2><p id="platformSupportModalCompany"></p></div><button class="modal-close" id="closePlatformSupportModal" type="button" aria-label="Fechar">×</button></div>
+            <p class="platform-support-modal-status" id="platformSupportModalStatus" role="status" aria-live="polite"></p>
+            <div class="table-wrap"><table class="platform-support-history-table"><thead><tr><th>Cliente</th><th>Pergunta</th><th>Resposta da IA</th><th>Data</th></tr></thead><tbody id="platformSupportHistoryBody"></tbody></table></div>
           </div>
         </div>`
     }
@@ -317,41 +329,39 @@
   if (pageId === 'configuracoes') {
     const settingsForm = document.getElementById('settingsForm');
     const settingsStatus = document.getElementById('settingsStatus');
-    const storageKey = 'cerne.settings.v1';
-    const defaults = {
-      companyName: 'SEV Gestão & Sistemas',
-      companyShortName: 'SEV',
-      language: 'pt-BR',
-      currency: 'BRL',
-      timezone: 'America/Sao_Paulo',
-      criticalStockAlerts: true
-    };
-
-    const readSettings = () => {
-      try {
-        const stored = JSON.parse(localStorage.getItem(storageKey));
-        if (!stored || typeof stored !== 'object') return defaults;
-        const settings = { ...defaults, ...stored };
-        if (settings.companyName === 'Cerne') settings.companyName = defaults.companyName;
-        if (settings.companyShortName === 'Cerne') settings.companyShortName = defaults.companyShortName;
-        return settings;
-      } catch {
-        return defaults;
-      }
-    };
-
-    const settings = readSettings();
-    Object.entries(settings).forEach(([name, value]) => {
+    const submitButton = settingsForm.querySelector('button[type="submit"]');
+    const applySettings = settings => Object.entries(settings).forEach(([name, value]) => {
       const input = settingsForm.elements.namedItem(name);
       if (!input) return;
       if (input.type === 'checkbox') input.checked = Boolean(value);
       else input.value = value;
     });
+    const setSaving = saving => {
+      submitButton.disabled = saving;
+      submitButton.textContent = saving ? 'Salvando…' : 'Salvar alterações';
+    };
+    const showStatus = (message, isError = false) => {
+      settingsStatus.textContent = message;
+      settingsStatus.classList.toggle('error', isError);
+    };
+    const loadSettings = async () => {
+      setSaving(true);
+      showStatus('Carregando configurações da empresa…');
+      try {
+        const user = await window.SevAuth.ready;
+        if (!user) return;
+        applySettings(await window.SevApi.getSettings());
+        showStatus('');
+      } catch (error) {
+        showStatus(error.message || 'Não foi possível carregar as configurações da empresa.', true);
+      } finally {
+        setSaving(false);
+      }
+    };
 
-    settingsForm.addEventListener('submit', event => {
+    settingsForm.addEventListener('submit', async event => {
       event.preventDefault();
       if (!settingsForm.reportValidity()) return;
-
       const updatedSettings = {
         companyName: settingsForm.elements.companyName.value.trim(),
         companyShortName: settingsForm.elements.companyShortName.value.trim(),
@@ -361,13 +371,18 @@
         criticalStockAlerts: settingsForm.elements.criticalStockAlerts.checked
       };
 
+      setSaving(true);
+      showStatus('');
       try {
-        localStorage.setItem(storageKey, JSON.stringify(updatedSettings));
-        settingsStatus.textContent = 'Configurações salvas neste dispositivo.';
-      } catch {
-        settingsStatus.textContent = 'Não foi possível salvar as configurações neste navegador.';
+        applySettings(await window.SevApi.updateSettings(updatedSettings));
+        showStatus('Configurações salvas para toda a empresa.');
+      } catch (error) {
+        showStatus(error.message || 'Não foi possível salvar as configurações da empresa.', true);
+      } finally {
+        setSaving(false);
       }
     });
+    loadSettings();
   }
 
   if (pageId === 'estoque') {
@@ -483,47 +498,57 @@
     const teamStatus = document.getElementById('teamStatus');
     const teamTableBody = document.getElementById('teamTableBody');
     const teamCount = document.getElementById('teamCount');
-    const storageKey = 'cerne.team.v1';
-    const roleLabels = { admin: 'Administrador', manager: 'Gerente', operator: 'Operacional' };
-    const defaultTeam = [{
-      id: 'joao-marcos',
-      name: 'João Marcos',
-      email: 'joao.marcos@sev.local',
-      role: 'admin'
-    }];
+    const submitButton = teamForm.querySelector('button[type="submit"]');
+    const invitationCard = document.getElementById('teamInvitationCard');
+    const invitationRecipient = document.getElementById('teamInvitationRecipient');
+    const invitationLink = document.getElementById('teamInvitationLink');
+    const copyInvitationLink = document.getElementById('copyTeamInvitationLink');
+    const roleLabels = { owner: 'Proprietário', admin: 'Administrador', finance: 'Financeiro', inventory: 'Estoque', operator: 'Operacional' };
+    const editableRoles = ['admin', 'finance', 'inventory', 'operator'];
     const escapeHtml = value => String(value).replace(/[&<>'"]/g, character => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
     })[character]);
-    const readTeam = () => {
-      try {
-        const stored = JSON.parse(localStorage.getItem(storageKey));
-        if (!Array.isArray(stored)) return defaultTeam;
-        return stored.filter(member =>
-          member && typeof member.name === 'string' && typeof member.email === 'string' && roleLabels[member.role]
-        );
-      } catch {
-        return defaultTeam;
-      }
-    };
-    let team = readTeam();
-    if (!team.length) team = defaultTeam;
+    let team = [];
     const showTeamStatus = (message, isError = false) => {
       teamStatus.textContent = message;
       teamStatus.classList.toggle('error', isError);
     };
 
+    const roleSelect = member => `<select data-team-role="${member.id}" aria-label="Função de ${escapeHtml(member.name)}">${editableRoles.map(role => `<option value="${role}"${role === member.role ? ' selected' : ''}>${roleLabels[role]}</option>`).join('')}</select>`;
     const renderTeam = () => {
-      teamCount.textContent = `${team.length} integrante${team.length === 1 ? '' : 's'} ativo${team.length === 1 ? '' : 's'}`;
-      teamTableBody.innerHTML = team.map(member => `
+      const active = team.filter(member => member.status === 'active').length;
+      teamCount.textContent = `${team.length} integrante${team.length === 1 ? '' : 's'} · ${active} ativo${active === 1 ? '' : 's'}`;
+      teamTableBody.innerHTML = team.length ? team.map(member => {
+        const editable = member.status === 'active' && member.role !== 'owner';
+        const status = member.status === 'active' ? '<span class="badge ok">Ativo</span>' : member.status === 'invited' ? '<span class="badge low">Convite pendente</span>' : '<span class="badge out">Convite expirado</span>';
+        return `
         <tr>
           <td><div class="member-cell"><span class="member-initials" aria-hidden="true">${escapeHtml(member.name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase())}</span><span><strong>${escapeHtml(member.name)}</strong><small>${escapeHtml(member.email)}</small></span></div></td>
-          <td>${escapeHtml(roleLabels[member.role])}</td>
-          <td><span class="badge ok">Ativo</span></td>
-        </tr>`).join('');
+          <td>${editable ? roleSelect(member) : escapeHtml(roleLabels[member.role])}</td>
+          <td>${status}</td>
+          <td>${editable ? `<button class="secondary-button team-save-role" type="button" data-save-team-role="${member.id}">Salvar</button>` : '<span class="team-protected-role">Definido na criação da empresa</span>'}</td>
+        </tr>`;
+      }).join('') : '<tr><td class="empty-table" colspan="4">Nenhum integrante encontrado.</td></tr>';
     };
-
-    renderTeam();
-    teamForm.addEventListener('submit', event => {
+    const setSubmitting = submitting => {
+      submitButton.disabled = submitting;
+      submitButton.textContent = submitting ? 'Gerando…' : 'Gerar convite';
+    };
+    const loadTeam = async () => {
+      showTeamStatus('Carregando integrantes…');
+      try {
+        const user = await window.SevAuth.ready;
+        if (!user) return;
+        team = await window.SevApi.getTeam();
+        renderTeam();
+        showTeamStatus('');
+      } catch (error) {
+        team = [];
+        renderTeam();
+        showTeamStatus(error.message || 'Não foi possível carregar a equipe da empresa.', true);
+      }
+    };
+    teamForm.addEventListener('submit', async event => {
       event.preventDefault();
       if (!teamForm.reportValidity()) return;
 
@@ -535,24 +560,54 @@
         teamForm.elements.memberName.focus();
         return;
       }
-      if (team.some(member => member.email.toLowerCase() === email)) {
-        showTeamStatus('Já existe um integrante cadastrado com este e-mail.', true);
-        teamForm.elements.memberEmail.focus();
-        return;
-      }
-
-      const newMember = { id: `${Date.now()}-${email}`, name, email, role };
-      const updatedTeam = [...team, newMember];
+      setSubmitting(true);
+      showTeamStatus('');
       try {
-        localStorage.setItem(storageKey, JSON.stringify(updatedTeam));
-        team = updatedTeam;
-        renderTeam();
+        const invitation = await window.SevApi.createTeamInvitation({ name, email, role });
+        invitationRecipient.textContent = `${invitation.name} · ${roleLabels[invitation.role]}`;
+        invitationLink.value = invitation.inviteLink;
+        invitationCard.hidden = false;
         teamForm.reset();
-        showTeamStatus('Integrante adicionado ao cadastro local.');
+        await loadTeam();
+        showTeamStatus('Convite criado. Copie o link e envie ao integrante.');
         teamForm.elements.memberName.focus();
-      } catch {
-        showTeamStatus('Não foi possível salvar a equipe neste navegador.', true);
+      } catch (error) {
+        showTeamStatus(error.message || 'Não foi possível criar o convite.', true);
+      } finally {
+        setSubmitting(false);
       }
     });
+    teamTableBody.addEventListener('click', async event => {
+      const button = event.target.closest('[data-save-team-role]');
+      if (!button || button.disabled) return;
+      const member = team.find(item => item.id === button.dataset.saveTeamRole);
+      const select = teamTableBody.querySelector(`[data-team-role="${button.dataset.saveTeamRole}"]`);
+      if (!member || !select || select.value === member.role) return;
+      button.disabled = true;
+      button.textContent = 'Salvando…';
+      try {
+        const updated = await window.SevApi.updateTeamMemberRole(member.id, select.value);
+        team = team.map(item => item.id === updated.id ? updated : item);
+        renderTeam();
+        showTeamStatus('Função do integrante atualizada.');
+      } catch (error) {
+        showTeamStatus(error.message || 'Não foi possível atualizar a função.', true);
+        button.disabled = false;
+        button.textContent = 'Salvar';
+      }
+    });
+    copyInvitationLink.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(invitationLink.value);
+        copyInvitationLink.textContent = 'Link copiado';
+        window.setTimeout(() => { copyInvitationLink.textContent = 'Copiar link'; }, 1800);
+      } catch {
+        invitationLink.focus();
+        invitationLink.select();
+        showTeamStatus('Copie o link selecionado manualmente.', true);
+      }
+    });
+    renderTeam();
+    loadTeam();
   }
 })();

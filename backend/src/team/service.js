@@ -48,6 +48,46 @@ export const createInvitation = async (db, payload, actor, config) => {
   });
 };
 
+export const updateMemberRole = async (db, userId, role, actor) => db.transaction(async transaction => {
+  const member = await transaction.query(
+    `SELECT membership.user_id AS "userId", membership.role, u.name, u.email, u.avatar_url AS "avatarUrl", membership.created_at AS "createdAt"
+       FROM organization_memberships membership
+       JOIN users u ON u.id = membership.user_id
+      WHERE membership.organization_id = $1 AND membership.user_id = $2
+      FOR UPDATE OF membership`,
+    [actor.organization.id, userId]
+  );
+  const current = member.rows[0];
+  if (!current) {
+    throw new AppError('Integrante nÃ£o encontrado nesta empresa.', { statusCode: 404, code: 'MEMBER_NOT_FOUND' });
+  }
+  if (current.role === 'owner') {
+    throw new AppError('A funÃ§Ã£o do proprietÃ¡rio nÃ£o pode ser alterada por esta tela.', { statusCode: 403, code: 'OWNER_ROLE_PROTECTED' });
+  }
+  if (actor.organization.role === 'admin' && (current.role === 'admin' || role === 'admin')) {
+    throw new AppError('Somente o proprietÃ¡rio pode alterar permissÃµes de administrador.', { statusCode: 403, code: 'FORBIDDEN' });
+  }
+
+  const result = await transaction.query(
+    `UPDATE organization_memberships membership
+        SET role = $3
+       FROM users u
+      WHERE membership.organization_id = $1 AND membership.user_id = $2 AND u.id = membership.user_id
+      RETURNING u.id, u.name, u.email, u.avatar_url AS "avatarUrl", membership.role, 'active' AS status, membership.created_at AS "createdAt"`,
+    [actor.organization.id, userId, role]
+  );
+  const updated = result.rows[0];
+  await recordAudit(transaction, {
+    organizationId: actor.organization.id,
+    actorUserId: actor.id,
+    action: 'team.member_role_updated',
+    entityType: 'user',
+    entityId: userId,
+    metadata: { from: current.role, to: role }
+  });
+  return updated;
+});
+
 export const acceptInvitation = async (db, payload, config) => db.transaction(async transaction => {
   const invitationResult = await transaction.query(
     `SELECT invitation.id, invitation.organization_id, invitation.recipient_name, invitation.email, invitation.role,

@@ -79,12 +79,19 @@ export const registerSupportRoutes = async app => {
     const answer = !generated.inScope ? outsideScopeReply : generated.needsHuman ? humanSupportReply : generated.answer;
 
     await request.tenantDb.transaction(async transaction => {
+      const conversation = await transaction.query(
+        `INSERT INTO support_chat_conversations (organization_id, user_id, question, answer, in_scope, needs_human)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id`,
+        [request.auth.organization.id, request.auth.id, message, answer, generated.inScope, needsHuman]
+      );
       await recordAudit(transaction, {
         organizationId: request.auth.organization.id,
         actorUserId: request.auth.id,
         action: 'support.chat_requested',
         entityType: 'support_chat',
-        metadata: { inScope: generated.inScope, needsHuman: generated.needsHuman }
+        entityId: conversation.rows[0].id,
+        metadata: { inScope: generated.inScope, needsHuman }
       });
     });
     return { answer, usage, needsHuman };

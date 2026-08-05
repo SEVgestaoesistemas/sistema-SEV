@@ -18,7 +18,16 @@
   const administratorModalCompany = document.getElementById('platformAdministratorModalCompany');
   const administratorStatus = document.getElementById('platformAdministratorStatus');
   const closeAdministratorModalButton = document.getElementById('closePlatformAdministratorModal');
+  const escalationsBody = document.getElementById('platformEscalationsBody');
+  const escalationsSummary = document.getElementById('platformEscalationsSummary');
+  const refreshEscalationsButton = document.getElementById('refreshPlatformEscalations');
+  const supportModal = document.getElementById('platformSupportModal');
+  const supportModalCompany = document.getElementById('platformSupportModalCompany');
+  const supportModalStatus = document.getElementById('platformSupportModalStatus');
+  const supportHistoryBody = document.getElementById('platformSupportHistoryBody');
+  const closeSupportModalButton = document.getElementById('closePlatformSupportModal');
   let companies = [];
+  let escalations = [];
   let editingCompanyId = null;
 
   const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({
@@ -33,6 +42,13 @@
     if (!date) return 'Não definida';
     const [year, month, day] = date.split('-');
     return `${day}/${month}/${year}`;
+  };
+  const dateTimeLabel = value => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Não informada';
+    return new Intl.DateTimeFormat('pt-BR', {
+      dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo'
+    }).format(date);
   };
   const planStatusLabel = statusValue => ({ active: 'Em dia', expired: 'Vencido', not_configured: 'Sem validade' })[statusValue] || 'Sem status';
   const planStatusClass = statusValue => ({ active: 'ok', expired: 'out', not_configured: 'low' })[statusValue] || 'low';
@@ -75,6 +91,59 @@
     administratorModal.hidden = false;
     administratorForm.elements.administratorName.focus();
   };
+  const closeSupportModal = () => {
+    supportModal.hidden = true;
+    supportModalStatus.textContent = '';
+  };
+  const renderSupportHistory = conversations => {
+    supportHistoryBody.innerHTML = conversations.length ? conversations.map(conversation => `
+      <tr>
+        <td>${escapeHtml(conversation.userName || 'Usuário removido')}</td>
+        <td class="platform-support-text">${escapeHtml(conversation.question)}</td>
+        <td class="platform-support-text">${escapeHtml(conversation.answer)}</td>
+        <td>${dateTimeLabel(conversation.createdAt)}</td>
+      </tr>`).join('') : '<tr><td class="empty-table" colspan="4">Esta empresa ainda não possui conversas registradas.</td></tr>';
+  };
+  const openSupportHistory = async company => {
+    if (!company) return;
+    supportModalCompany.textContent = company.name;
+    supportModalStatus.textContent = 'Carregando histórico da empresa…';
+    supportHistoryBody.innerHTML = '<tr><td class="empty-table" colspan="4">Carregando…</td></tr>';
+    supportModal.hidden = false;
+    try {
+      const result = await window.SevApi.getPlatformCompanySupportConversations(company.id);
+      supportModalCompany.textContent = result.company.name;
+      supportModalStatus.textContent = `${result.conversations.length} conversa${result.conversations.length === 1 ? '' : 's'} mais recente${result.conversations.length === 1 ? '' : 's'}.`;
+      renderSupportHistory(result.conversations);
+    } catch (error) {
+      supportModalStatus.textContent = error.message || 'Não foi possível carregar o histórico de suporte.';
+      supportHistoryBody.innerHTML = '<tr><td class="empty-table" colspan="4">Não foi possível carregar as conversas.</td></tr>';
+    }
+  };
+  const renderEscalations = () => {
+    escalationsSummary.textContent = escalations.length
+      ? `${escalations.length} encaminhamento${escalations.length === 1 ? '' : 's'} mais recente${escalations.length === 1 ? '' : 's'} para acompanhamento.`
+      : 'Nenhum encaminhamento para atendimento humano.';
+    escalationsBody.innerHTML = escalations.length ? escalations.map(escalation => `
+      <tr>
+        <td><strong>${escapeHtml(escalation.companyName)}</strong></td>
+        <td class="platform-support-text">${escapeHtml(escalation.question)}</td>
+        <td>${escapeHtml(escalation.userName || 'Usuário removido')}</td>
+        <td>${dateTimeLabel(escalation.createdAt)}</td>
+      </tr>`).join('') : '<tr><td class="empty-table" colspan="4">Nenhum encaminhamento encontrado.</td></tr>';
+  };
+  const loadEscalations = async () => {
+    escalationsSummary.textContent = 'Carregando encaminhamentos…';
+    try {
+      const user = await window.SevAuth.ready;
+      if (!user) return;
+      escalations = await window.SevApi.getPlatformSupportEscalations();
+      renderEscalations();
+    } catch (error) {
+      escalationsSummary.textContent = error.message || 'Não foi possível carregar os encaminhamentos.';
+      escalationsBody.innerHTML = '<tr><td class="empty-table" colspan="4">Não foi possível carregar os dados.</td></tr>';
+    }
+  };
 
   const render = () => {
     const visible = visibleCompanies();
@@ -105,6 +174,7 @@
               <div class="platform-actions-popover" id="platform-actions-${company.id}" role="menu" data-platform-actions-popover hidden>
                 <button type="button" role="menuitem" data-edit-administrator="${company.id}" ${protectedAccount ? 'disabled' : ''}>Editar responsável</button>
                 <button type="button" role="menuitem" data-reset-password="${company.id}" ${protectedAccount ? 'disabled' : ''}>Gerar nova senha</button>
+                <button type="button" role="menuitem" data-view-support-history="${company.id}">Ver conversas do suporte</button>
                 <div class="platform-actions-divider" role="separator"></div>
                 <button class="platform-delete-button" type="button" role="menuitem" data-delete-company="${company.id}" ${protectedAccount ? 'disabled' : ''}><span class="platform-menu-trash" aria-hidden="true">🗑</span>Excluir permanentemente</button>
                 ${protectedMessage}
@@ -159,7 +229,7 @@
   body.addEventListener('click', async event => {
     const button = event.target.closest('button');
     if (!button || button.disabled) return;
-    const id = button.dataset.toggleActionsMenu || button.dataset.savePlan || button.dataset.editAdministrator || button.dataset.resetPassword || button.dataset.toggleSuspension || button.dataset.deleteCompany;
+    const id = button.dataset.toggleActionsMenu || button.dataset.savePlan || button.dataset.editAdministrator || button.dataset.resetPassword || button.dataset.toggleSuspension || button.dataset.deleteCompany || button.dataset.viewSupportHistory;
     if (!id) return;
     const company = findCompany(id);
     if (!company) return;
@@ -174,6 +244,11 @@
     }
 
     closeActionMenus();
+
+    if (button.dataset.viewSupportHistory) {
+      openSupportHistory(company);
+      return;
+    }
 
     if (button.dataset.savePlan) {
       const input = body.querySelector(`[data-plan-date="${id}"]`);
@@ -281,6 +356,7 @@
   });
 
   refreshButton.addEventListener('click', loadCompanies);
+  refreshEscalationsButton.addEventListener('click', loadEscalations);
   search.addEventListener('input', render);
   copyPasswordButton.addEventListener('click', async () => {
     try {
@@ -295,15 +371,19 @@
   });
   closeAdministratorModalButton.addEventListener('click', closeAdministratorModal);
   administratorModal.addEventListener('click', event => { if (event.target === administratorModal) closeAdministratorModal(); });
+  closeSupportModalButton.addEventListener('click', closeSupportModal);
+  supportModal.addEventListener('click', event => { if (event.target === supportModal) closeSupportModal(); });
   document.addEventListener('click', event => {
     if (!event.target.closest('.platform-actions-menu')) closeActionMenus();
   });
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape') {
       closeAdministratorModal();
+      closeSupportModal();
       closeActionMenus();
     }
   });
 
   loadCompanies();
+  loadEscalations();
 })();

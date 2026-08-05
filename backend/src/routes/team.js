@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { requireAccountAccess, requireAuth, requireCsrf, requireRoles } from '../auth/middleware.js';
-import { createInvitation } from '../team/service.js';
+import { createInvitation, updateMemberRole } from '../team/service.js';
 import { emailSchema, validate } from './validation.js';
 
 const teamRoles = ['owner', 'admin'];
@@ -9,6 +9,8 @@ const invitationSchema = z.object({
   email: emailSchema,
   role: z.enum(['admin', 'finance', 'inventory', 'operator'])
 });
+const memberIdSchema = z.object({ id: z.string().uuid() });
+const memberRoleSchema = z.object({ role: z.enum(['admin', 'finance', 'inventory', 'operator']) });
 
 export const registerTeamRoutes = async app => {
   app.get('/team', { preHandler: [requireAuth, requireAccountAccess, requireRoles(teamRoles)] }, async request => {
@@ -36,5 +38,13 @@ export const registerTeamRoutes = async app => {
     const payload = validate(invitationSchema, request.body);
     const invitation = await createInvitation(request.tenantDb, payload, request.auth, app.config);
     return reply.code(201).send({ invitation });
+  });
+
+  app.patch('/team/members/:id', {
+    preHandler: [requireAuth, requireCsrf, requireAccountAccess, requireRoles(teamRoles)]
+  }, async request => {
+    const { id } = validate(memberIdSchema, request.params);
+    const { role } = validate(memberRoleSchema, request.body);
+    return { member: await updateMemberRole(request.tenantDb, id, role, request.auth) };
   });
 };

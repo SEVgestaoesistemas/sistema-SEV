@@ -52,7 +52,7 @@ export const acceptInvitation = async (db, payload, config) => db.transaction(as
   const invitationResult = await transaction.query(
     `SELECT invitation.id, invitation.organization_id, invitation.recipient_name, invitation.email, invitation.role,
             organization.plan_expires_at,
-            (organization.plan_expires_at IS NOT NULL AND organization.plan_expires_at < CURRENT_DATE) AS plan_expired
+            (organization.plan_expires_at IS NOT NULL AND organization.plan_expires_at < (now() AT TIME ZONE 'America/Sao_Paulo')::date) AS plan_expired
        FROM team_invitations invitation
        JOIN organizations organization ON organization.id = invitation.organization_id
       WHERE token_hash = $1 AND expires_at > now() AND accepted_at IS NULL AND revoked_at IS NULL

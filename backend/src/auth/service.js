@@ -105,7 +105,7 @@ export const login = async (db, payload, config) => {
   const result = await db.query(
     `SELECT u.id AS user_id, u.name AS user_name, u.email, u.password_hash, u.force_password_change,
             o.id AS organization_id, o.name AS organization_name, o.plan_expires_at, membership.role,
-            (o.plan_expires_at IS NOT NULL AND o.plan_expires_at < CURRENT_DATE) AS plan_expired,
+            (o.plan_expires_at IS NOT NULL AND o.plan_expires_at < (now() AT TIME ZONE 'America/Sao_Paulo')::date) AS plan_expired,
             EXISTS (SELECT 1 FROM platform_administrators pa WHERE pa.user_id = u.id) AS is_platform_admin
        FROM users u
        JOIN organization_memberships membership ON membership.user_id = u.id
@@ -147,7 +147,7 @@ export const findSession = async (db, token) => {
   const result = await db.query(
     `SELECT s.id AS session_id, s.csrf_token_hash, u.id AS user_id, u.name AS user_name, u.email, u.force_password_change,
             o.id AS organization_id, o.name AS organization_name, o.plan_expires_at, membership.role,
-            (o.plan_expires_at IS NOT NULL AND o.plan_expires_at < CURRENT_DATE) AS plan_expired,
+            (o.plan_expires_at IS NOT NULL AND o.plan_expires_at < (now() AT TIME ZONE 'America/Sao_Paulo')::date) AS plan_expired,
             EXISTS (SELECT 1 FROM platform_administrators pa WHERE pa.user_id = u.id) AS is_platform_admin
        FROM sessions s
        JOIN users u ON u.id = s.user_id

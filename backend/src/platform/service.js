@@ -6,9 +6,17 @@ import { hashPassword } from '../security/password.js';
 
 const normalizeEmail = email => email.trim().toLowerCase();
 
+const saoPauloToday = () => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date());
+  const value = Object.fromEntries(parts.filter(part => part.type !== 'literal').map(part => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+};
+
 const statusFromPlan = planExpiresAt => {
   if (!planExpiresAt) return 'not_configured';
-  const today = new Date().toISOString().slice(0, 10);
+  const today = saoPauloToday();
   return planExpiresAt < today ? 'expired' : 'active';
 };
 
@@ -30,7 +38,7 @@ export const listCompanies = async db => {
     `SELECT o.id, o.name, o.created_at AS "createdAt", o.plan_expires_at AS "planExpiresAt",
             CASE
               WHEN o.plan_expires_at IS NULL THEN 'not_configured'
-              WHEN o.plan_expires_at < CURRENT_DATE THEN 'expired'
+              WHEN o.plan_expires_at < (now() AT TIME ZONE 'America/Sao_Paulo')::date THEN 'expired'
               ELSE 'active'
             END AS "planStatus",
             owner_user.id AS "administratorId", owner_user.name AS "administratorName", owner_user.email AS "administratorEmail"

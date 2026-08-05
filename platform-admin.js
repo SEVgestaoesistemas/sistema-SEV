@@ -41,6 +41,10 @@
     status.classList.toggle('error', error);
   };
   const findCompany = id => companies.find(company => company.id === id);
+  const closeActionMenus = () => {
+    document.querySelectorAll('[data-platform-actions-popover]').forEach(popover => { popover.hidden = true; });
+    document.querySelectorAll('[data-toggle-actions-menu]').forEach(button => { button.setAttribute('aria-expanded', 'false'); });
+  };
   const visibleCompanies = () => {
     const query = search.value.trim().toLocaleLowerCase('pt-BR');
     if (!query) return companies;
@@ -92,12 +96,20 @@
           <td>${dateLabel(company.planExpiresAt)}</td>
           <td><div class="platform-status-stack">${accountStatus}${company.isSuspended ? `<small>Plano: ${planStatusLabel(company.planStatus)}</small>` : ''}</div></td>
           <td><div class="plan-update-control"><input data-plan-date="${company.id}" type="date" value="${escapeHtml(dateOnly(company.planExpiresAt))}" aria-label="Nova validade para ${escapeHtml(company.name)}"><button class="secondary-button" type="button" data-save-plan="${company.id}">Salvar</button></div></td>
-          <td><div class="platform-row-actions">
-            <button class="text-button" type="button" data-edit-administrator="${company.id}" ${protectedAccount ? 'disabled' : ''}>Editar responsável</button>
-            <button class="text-button" type="button" data-reset-password="${company.id}" ${protectedAccount ? 'disabled' : ''}>Nova senha</button>
-            <button class="text-button" type="button" data-toggle-suspension="${company.id}">${company.isSuspended ? 'Reativar acesso' : 'Suspender acesso'}</button>
-            <button class="text-button platform-delete-button" type="button" data-delete-company="${company.id}" ${protectedAccount ? 'disabled' : ''}>Excluir permanentemente</button>
-            ${protectedMessage}
+          <td><div class="platform-actions-cell">
+            <button class="platform-access-toggle${company.isSuspended ? ' is-suspended' : ''}" type="button" role="switch" aria-checked="${String(!company.isSuspended)}" aria-label="${company.isSuspended ? 'Reativar' : 'Suspender'} acesso de ${escapeHtml(company.name)}" data-toggle-suspension="${company.id}">
+              <span class="platform-toggle-track" aria-hidden="true"><span></span></span><span class="platform-toggle-label">${company.isSuspended ? 'Suspenso' : 'Ativo'}</span>
+            </button>
+            <div class="platform-actions-menu">
+              <button class="platform-actions-trigger" type="button" aria-label="Mais ações para ${escapeHtml(company.name)}" aria-haspopup="menu" aria-controls="platform-actions-${company.id}" aria-expanded="false" data-toggle-actions-menu="${company.id}"><span aria-hidden="true">⋮</span></button>
+              <div class="platform-actions-popover" id="platform-actions-${company.id}" role="menu" data-platform-actions-popover hidden>
+                <button type="button" role="menuitem" data-edit-administrator="${company.id}" ${protectedAccount ? 'disabled' : ''}>Editar responsável</button>
+                <button type="button" role="menuitem" data-reset-password="${company.id}" ${protectedAccount ? 'disabled' : ''}>Gerar nova senha</button>
+                <div class="platform-actions-divider" role="separator"></div>
+                <button class="platform-delete-button" type="button" role="menuitem" data-delete-company="${company.id}" ${protectedAccount ? 'disabled' : ''}><span class="platform-menu-trash" aria-hidden="true">🗑</span>Excluir permanentemente</button>
+                ${protectedMessage}
+              </div>
+            </div>
           </div></td>
         </tr>`;
     }).join('') : '<tr><td class="empty-table" colspan="6">Nenhuma empresa encontrada.</td></tr>';
@@ -147,10 +159,21 @@
   body.addEventListener('click', async event => {
     const button = event.target.closest('button');
     if (!button || button.disabled) return;
-    const id = button.dataset.savePlan || button.dataset.editAdministrator || button.dataset.resetPassword || button.dataset.toggleSuspension || button.dataset.deleteCompany;
+    const id = button.dataset.toggleActionsMenu || button.dataset.savePlan || button.dataset.editAdministrator || button.dataset.resetPassword || button.dataset.toggleSuspension || button.dataset.deleteCompany;
     if (!id) return;
     const company = findCompany(id);
     if (!company) return;
+
+    if (button.dataset.toggleActionsMenu) {
+      const popover = document.getElementById(`platform-actions-${id}`);
+      const willOpen = Boolean(popover?.hidden);
+      closeActionMenus();
+      if (popover) popover.hidden = !willOpen;
+      button.setAttribute('aria-expanded', String(willOpen));
+      return;
+    }
+
+    closeActionMenus();
 
     if (button.dataset.savePlan) {
       const input = body.querySelector(`[data-plan-date="${id}"]`);
@@ -272,7 +295,15 @@
   });
   closeAdministratorModalButton.addEventListener('click', closeAdministratorModal);
   administratorModal.addEventListener('click', event => { if (event.target === administratorModal) closeAdministratorModal(); });
-  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeAdministratorModal(); });
+  document.addEventListener('click', event => {
+    if (!event.target.closest('.platform-actions-menu')) closeActionMenus();
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      closeAdministratorModal();
+      closeActionMenus();
+    }
+  });
 
   loadCompanies();
 })();

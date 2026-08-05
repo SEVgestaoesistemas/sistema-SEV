@@ -87,6 +87,7 @@ test('chat de suporte é limitado e isolado por organização no RLS', { skip: !
     });
     assert.equal(ownQuestion.statusCode, 200);
     assert.equal(ownQuestion.json().answer, 'Use o menu Estoque para cadastrar o produto.');
+    assert.equal(ownQuestion.json().needsHuman, false);
     assert.equal(ownQuestion.json().usage.userRemaining, 0);
 
     const offScopeQuestion = await app.inject({
@@ -94,6 +95,7 @@ test('chat de suporte é limitado e isolado por organização no RLS', { skip: !
     });
     assert.equal(offScopeQuestion.statusCode, 200);
     assert.match(offScopeQuestion.json().answer, /somente com o uso do sistema SEV/i);
+    assert.equal(offScopeQuestion.json().needsHuman, true);
     assert.deepEqual(askedQuestions, ['Como cadastro um produto?', 'Conte uma piada']);
 
     const limited = await app.inject({

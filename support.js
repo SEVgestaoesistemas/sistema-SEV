@@ -15,6 +15,7 @@
         <button type="button" data-support-question="Onde vejo pagamentos pendentes?">Pagamentos pendentes</button>
         <button type="button" data-support-question="Como editar meu perfil?">Editar perfil</button>
       </div>
+      <div class="support-human-contact"><a id="supportHumanContact" class="support-human-link" target="_blank" rel="noopener noreferrer">Falar com atendente</a></div>
       <form class="support-form" id="supportForm"><label class="sr-only" for="supportInput">Digite sua dúvida</label><input id="supportInput" type="text" maxlength="1000" autocomplete="off" placeholder="Digite sua dúvida..."><button type="submit" aria-label="Enviar mensagem">Enviar</button></form>
     </section>`;
   document.body.append(widget);
@@ -26,7 +27,20 @@
   const form = document.getElementById('supportForm');
   const input = document.getElementById('supportInput');
   const submitButton = form.querySelector('button[type="submit"]');
+  const humanContact = document.getElementById('supportHumanContact');
+  const whatsappNumber = '5581997498046';
   let isSending = false;
+  const whatsappUrl = (question, afterAiAttempt = false) => {
+    const text = question
+      ? afterAiAttempt
+        ? `Olá, estou com uma dúvida no sistema SEV que a IA não conseguiu responder: ${question}`
+        : `Olá, preciso de ajuda com o sistema SEV: ${question}`
+      : 'Olá, preciso de ajuda com o sistema SEV.';
+    return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`;
+  };
+  const updateHumanContact = question => {
+    humanContact.href = whatsappUrl(question.trim());
+  };
   const addMessage = (text, sender, pending = false) => {
     const message = document.createElement('div');
     message.className = `support-message ${sender}${pending ? ' pending' : ''}`;
@@ -36,6 +50,18 @@
     messages.append(message);
     messages.scrollTop = messages.scrollHeight;
     return message;
+  };
+  const addHumanContact = question => {
+    const action = document.createElement('div');
+    action.className = 'support-human-action';
+    const link = document.createElement('a');
+    link.href = whatsappUrl(question, true);
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = 'Falar com atendente no WhatsApp';
+    action.append(link);
+    messages.append(action);
+    messages.scrollTop = messages.scrollHeight;
   };
   const setSending = value => {
     isSending = value;
@@ -55,6 +81,7 @@
     if (!trimmed || isSending) return;
     addMessage(trimmed, 'user');
     input.value = '';
+    updateHumanContact('');
     setSending(true);
     const typingMessage = addMessage('Consultando o assistente...', 'assistant', true);
     try {
@@ -62,9 +89,11 @@
       const response = await window.SevApi.sendSupportMessage(trimmed);
       typingMessage.remove();
       addMessage(response.answer, 'assistant');
+      if (response.needsHuman) addHumanContact(trimmed);
     } catch (error) {
       typingMessage.remove();
       addMessage(error?.message || 'Não foi possível falar com o assistente. Sua dúvida será encaminhada ao suporte humano.', 'assistant');
+      addHumanContact(trimmed);
     } finally {
       setSending(false);
       if (!panel.hidden) input.focus();
@@ -82,11 +111,13 @@
     event.preventDefault();
     ask(input.value);
   });
+  input.addEventListener('input', () => updateHumanContact(input.value));
   document.querySelectorAll('[data-support-question]').forEach(suggestion => {
     suggestion.addEventListener('click', () => ask(suggestion.dataset.supportQuestion || ''));
   });
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape') closePanel();
   });
+  updateHumanContact('');
   addMessage('Olá! Posso orientar sobre como usar o sistema SEV. Não tenho acesso aos dados da sua empresa. Como posso ajudar?', 'assistant');
 })();

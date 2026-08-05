@@ -886,6 +886,12 @@ tbody tr:hover{ background: var(--surface-soft); }
 .support-suggestions{ display:flex; gap:6px; overflow-x:auto; padding:10px 12px; border-top:1px solid var(--border); }
 .support-suggestions button{ flex:0 0 auto; padding:5px 8px; border:1px solid var(--border); border-radius:999px; background:var(--surface); color:var(--ink-soft); font:inherit; font-size:10.5px; cursor:pointer; }
 .support-suggestions button:hover{ border-color:var(--brand); color:var(--brand); }
+.support-human-contact{ padding:0 12px 10px; background:var(--surface); }
+.support-human-link,.support-human-action a{ display:inline-flex; align-items:center; justify-content:center; min-height:32px; border-radius:var(--radius-sm); background:#25d366; color:#fff; font-size:11px; font-weight:700; text-decoration:none; }
+.support-human-link{ width:100%; }
+.support-human-link:hover,.support-human-action a:hover{ background:#1dae55; }
+.support-human-action{ align-self:flex-start; max-width:88%; }
+.support-human-action a{ padding:0 11px; }
 .support-form{ display:flex; gap:7px; padding:10px 12px; border-top:1px solid var(--border); }
 .support-form input{ min-width:0; flex:1; border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 9px; color:var(--ink); font:inherit; font-size:12px; }
 .support-form input:focus{ outline:0; border-color:var(--brand); box-shadow:0 0 0 3px var(--brand-tint); }

@@ -5,6 +5,10 @@ import { createSlug, generateTemporaryPassword } from '../auth/service.js';
 import { hashPassword } from '../security/password.js';
 
 const normalizeEmail = email => email.trim().toLowerCase();
+const dateOnly = value => {
+  const match = String(value || '').match(/^\d{4}-\d{2}-\d{2}/);
+  return match ? match[0] : null;
+};
 
 const saoPauloToday = () => {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -15,16 +19,17 @@ const saoPauloToday = () => {
 };
 
 const statusFromPlan = planExpiresAt => {
-  if (!planExpiresAt) return 'not_configured';
+  const planDate = dateOnly(planExpiresAt);
+  if (!planDate) return 'not_configured';
   const today = saoPauloToday();
-  return planExpiresAt < today ? 'expired' : 'active';
+  return planDate < today ? 'expired' : 'active';
 };
 
 const toCompany = row => ({
   id: row.id,
   name: row.name,
   createdAt: row.createdAt,
-  planExpiresAt: row.planExpiresAt || null,
+  planExpiresAt: dateOnly(row.planExpiresAt),
   planStatus: row.planStatus || statusFromPlan(row.planExpiresAt),
   administrator: row.administratorId ? {
     id: row.administratorId,

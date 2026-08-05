@@ -17,7 +17,16 @@
   const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
   })[character]);
-  const dateLabel = value => value ? new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' }).format(new Date(`${value}T00:00:00Z`)) : 'Não definida';
+  const dateOnly = value => {
+    const match = String(value || '').match(/^\d{4}-\d{2}-\d{2}/);
+    return match ? match[0] : '';
+  };
+  const dateLabel = value => {
+    const date = dateOnly(value);
+    if (!date) return 'Não definida';
+    const [year, month, day] = date.split('-');
+    return `${day}/${month}/${year}`;
+  };
   const statusLabel = statusValue => ({ active: 'Em dia', expired: 'Vencido', not_configured: 'Sem validade' })[statusValue] || 'Sem status';
   const statusClass = statusValue => ({ active: 'ok', expired: 'out', not_configured: 'low' })[statusValue] || 'low';
   const showStatus = (message, error = false) => {
@@ -31,11 +40,11 @@
     summary.textContent = `${companies.length} empresa${companies.length === 1 ? '' : 's'} cadastrada${companies.length === 1 ? '' : 's'} · ${active} em dia · ${expired} vencida${expired === 1 ? '' : 's'}`;
     body.innerHTML = companies.length ? companies.map(company => `
       <tr>
-        <td><strong>${escapeHtml(company.name)}</strong><small>Criada em ${dateLabel(String(company.createdAt).slice(0, 10))}</small></td>
+        <td><strong>${escapeHtml(company.name)}</strong><small>Criada em ${dateLabel(company.createdAt)}</small></td>
         <td>${company.administrator ? `<strong>${escapeHtml(company.administrator.name)}</strong><small>${escapeHtml(company.administrator.email)}</small>` : '—'}</td>
         <td>${dateLabel(company.planExpiresAt)}</td>
         <td><span class="badge ${statusClass(company.planStatus)}">${statusLabel(company.planStatus)}</span></td>
-        <td><div class="plan-update-control"><input data-plan-date="${company.id}" type="date" value="${escapeHtml(company.planExpiresAt || '')}" aria-label="Nova validade para ${escapeHtml(company.name)}"><button class="secondary-button" type="button" data-save-plan="${company.id}">Salvar</button></div></td>
+        <td><div class="plan-update-control"><input data-plan-date="${company.id}" type="date" value="${escapeHtml(dateOnly(company.planExpiresAt))}" aria-label="Nova validade para ${escapeHtml(company.name)}"><button class="secondary-button" type="button" data-save-plan="${company.id}">Salvar</button></div></td>
       </tr>`).join('') : '<tr><td class="empty-table" colspan="5">Nenhuma empresa cadastrada.</td></tr>';
   };
 

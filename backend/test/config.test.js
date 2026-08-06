@@ -24,8 +24,8 @@ test('recuperação de senha possui validade segura e exige configuração expl�
   const defaults = loadConfig({ NODE_ENV: 'test' });
   assert.equal(defaults.passwordResetTtlMinutes, 30);
   assert.equal(defaults.smtpHost, 'smtp.gmail.com');
-  assert.equal(defaults.smtpPort, 465);
-  assert.equal(defaults.smtpSecure, true);
+  assert.equal(defaults.smtpPort, 587);
+  assert.equal(defaults.smtpSecure, false);
   assert.equal(defaults.smtpUser, undefined);
   assert.equal(defaults.smtpPass, undefined);
   assert.equal(defaults.emailFrom, undefined);

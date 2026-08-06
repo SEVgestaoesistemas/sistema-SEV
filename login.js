@@ -23,6 +23,11 @@
     window.location.replace(user?.passwordChangeRequired ? 'trocar-senha.html' : nextPage);
   };
 
+  if (new URLSearchParams(window.location.search).get('reset') === 'success') {
+    showStatus(loginStatus, 'Senha redefinida com sucesso. Entre com sua nova senha.');
+    history.replaceState(null, '', window.location.pathname);
+  }
+
   loginForm.addEventListener('submit', async event => {
     event.preventDefault();
     if (!loginForm.reportValidity()) return;

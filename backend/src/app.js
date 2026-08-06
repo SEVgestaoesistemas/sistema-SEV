@@ -20,11 +20,13 @@ import { registerReceivableRoutes } from './routes/receivables.js';
 import { registerReportRoutes } from './routes/reports.js';
 import { registerSupportRoutes } from './routes/support.js';
 import { createGeminiChat } from './support/gemini.js';
+import { createEmailSender } from './email.js';
 
 export const buildApp = async (options = {}) => {
   const config = options.config || loadConfig();
   const db = options.db || createDatabase(config);
   const geminiChat = options.geminiChat || createGeminiChat(config);
+  const emailSender = options.emailSender ?? createEmailSender(config);
   const app = Fastify({
     logger: options.logger ?? config.environment !== 'test',
     trustProxy: config.trustProxy,
@@ -34,6 +36,7 @@ export const buildApp = async (options = {}) => {
   app.decorate('config', config);
   app.decorate('db', db);
   app.decorate('geminiChat', geminiChat);
+  app.decorate('emailSender', emailSender);
   app.decorateRequest('auth', null);
   app.decorateRequest('tenantDb', null);
 
@@ -69,14 +72,37 @@ export const buildApp = async (options = {}) => {
     if (error instanceof AppError) {
       return reply.code(error.statusCode).send({ error: { code: error.code, message: error.message } });
     }
+    if (error.code === 'FST_ERR_RATE_LIMIT' || error.statusCode === 429) {
+      return reply.code(429).send({
+        error: {
+          code: 'RATE_LIMITED',
+          message: 'Muitas tentativas em pouco tempo. Aguarde alguns minutos antes de tentar novamente.'
+        }
+      });
+    }
     if (error.code === '23505') {
       return reply.code(409).send({ error: { code: 'CONFLICT', message: 'Já existe um registro com estes dados.' } });
     }
+    if (error.code === '23503') {
+      return reply.code(409).send({
+        error: {
+          code: 'REFERENCE_CONFLICT',
+          message: 'Este registro está vinculado a outros dados e não pode ser alterado agora.'
+        }
+      });
+    }
     if (error.statusCode && error.statusCode < 500) {
-      return reply.code(error.statusCode).send({ error: { code: 'BAD_REQUEST', message: 'Não foi possível processar a solicitação.' } });
+      return reply.code(error.statusCode).send({
+        error: { code: 'BAD_REQUEST', message: 'Revise os dados informados e tente novamente.' }
+      });
     }
     request.log.error(error);
-    return reply.code(500).send({ error: { code: 'INTERNAL_ERROR', message: 'Ocorreu um erro interno.' } });
+    return reply.code(500).send({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'O servidor encontrou um problema temporário. Nenhuma alteração foi confirmada; tente novamente em alguns minutos.'
+      }
+    });
   });
 
   app.get('/', async () => ({ service: 'sev-backend', version: 'v1' }));

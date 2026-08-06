@@ -53,6 +53,8 @@ test('login respeita o limite configurado por ambiente', async () => {
   const limited = await request();
   assert.equal(limited.statusCode, 429);
   assert.equal(limited.headers['x-ratelimit-limit'], '2');
+  assert.equal(limited.json().error.code, 'RATE_LIMITED');
+  assert.match(limited.json().error.message, /Muitas tentativas/);
   await app.close();
 });
 
@@ -65,6 +67,26 @@ test('cadastro público é rejeitado quando a plataforma está em modo por assin
   });
   assert.equal(response.statusCode, 403);
   assert.equal(response.json().error.code, 'REGISTRATION_DISABLED');
+  await app.close();
+});
+
+test('falhas de e-mail e do servidor retornam mensagens claras sem detalhes internos', async () => {
+  const app = await buildApp({ config, db: database, logger: false });
+  app.get('/test/unexpected-error', async () => { throw new Error('database credential must not leak'); });
+
+  const emailUnavailable = await app.inject({
+    method: 'POST',
+    url: '/api/v1/auth/password/reset',
+    payload: { email: 'cliente@sev.test' }
+  });
+  assert.equal(emailUnavailable.statusCode, 503);
+  assert.equal(emailUnavailable.json().error.code, 'EMAIL_DELIVERY_UNAVAILABLE');
+  assert.match(emailUnavailable.json().error.message, /recuperação de senha/);
+
+  const unexpected = await app.inject({ method: 'GET', url: '/test/unexpected-error' });
+  assert.equal(unexpected.statusCode, 500);
+  assert.equal(unexpected.json().error.code, 'INTERNAL_ERROR');
+  assert.doesNotMatch(unexpected.json().error.message, /credential/i);
   await app.close();
 });
 

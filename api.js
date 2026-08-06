@@ -4,6 +4,25 @@
   const csrfStorageKey = 'sev.csrf.v1';
   let csrfToken = null;
 
+  const fallbackMessages = {
+    VALIDATION_ERROR: 'Verifique os campos preenchidos e tente novamente.',
+    BAD_REQUEST: 'Revise os dados informados e tente novamente.',
+    INVALID_CREDENTIALS: 'E-mail ou senha incorretos. Confira os dados e tente novamente.',
+    INVALID_CURRENT_PASSWORD: 'A senha atual está incorreta. Confira-a e tente novamente.',
+    CONFLICT: 'Este dado já existe ou foi alterado por outra pessoa. Atualize a tela e tente novamente.',
+    FORBIDDEN: 'Sua conta não tem permissão para realizar esta ação.',
+    UNAUTHENTICATED: 'Sua sessão expirou. Entre novamente para continuar.',
+    CSRF_REJECTED: 'A confirmação de segurança expirou. Atualize a página e tente novamente.',
+    NOT_FOUND: 'O item solicitado não foi encontrado.',
+    RATE_LIMITED: 'Muitas tentativas em pouco tempo. Aguarde alguns minutos antes de tentar novamente.',
+    SERVICE_UNAVAILABLE: 'Este serviço está temporariamente indisponível. Tente novamente em alguns minutos.',
+    EMAIL_DELIVERY_UNAVAILABLE: 'A recuperação de senha está temporariamente indisponível. Tente novamente mais tarde.',
+    INTERNAL_ERROR: 'O servidor encontrou um problema temporário. Nenhuma alteração foi confirmada; tente novamente em alguns minutos.',
+    INVALID_PASSWORD_RESET_TOKEN: 'Este link de recuperação é inválido ou expirou. Solicite um novo link.',
+    PLAN_EXPIRED: 'O plano desta empresa expirou. Entre em contato com a SEV para regularizar o acesso.',
+    COMPANY_SUSPENDED: 'O acesso desta empresa está suspenso. Entre em contato com a SEV para regularizar.'
+  };
+
   try {
     csrfToken = sessionStorage.getItem(csrfStorageKey);
   } catch {
@@ -22,11 +41,24 @@
 
   const clearSessionState = () => saveCsrfToken(null);
 
+  const messageForResponse = (response, data, fallback) => {
+    const code = data?.error?.code;
+    const serverMessage = data?.error?.message;
+    if (fallbackMessages[code]) return fallbackMessages[code];
+    if (serverMessage) return serverMessage;
+    if (response?.status === 429) return fallbackMessages.RATE_LIMITED;
+    if (response?.status >= 500) return fallbackMessages.INTERNAL_ERROR;
+    if (response?.status === 404) return fallbackMessages.NOT_FOUND;
+    if (response?.status === 403) return fallbackMessages.FORBIDDEN;
+    return serverMessage || fallback;
+  };
+
   const createApiError = (message, response, data) => {
     const error = new Error(message);
     error.name = 'SevApiError';
     error.status = response?.status || 0;
     error.code = data?.error?.code || 'REQUEST_FAILED';
+    error.retryAfterSeconds = Number(response?.headers?.get('retry-after')) || null;
     return error;
   };
 
@@ -37,7 +69,7 @@
     const data = contentType.includes('application/json') ? await response.json() : null;
 
     if (!response.ok) {
-      const message = data?.error?.message || 'Não foi possível concluir a solicitação.';
+      const message = messageForResponse(response, data, 'Não foi possível concluir a solicitação.');
       const error = createApiError(message, response, data);
       if (error.status === 401) {
         clearSessionState();
@@ -87,7 +119,7 @@
     if (!response.ok) {
       const contentType = response.headers.get('content-type') || '';
       const data = contentType.includes('application/json') ? await response.json() : null;
-      const error = createApiError(data?.error?.message || 'Não foi possível preparar o relatório.', response, data);
+      const error = createApiError(messageForResponse(response, data, 'Não foi possível preparar o relatório.'), response, data);
       if (error.status === 401) {
         clearSessionState();
         window.dispatchEvent(new CustomEvent('sev:unauthenticated'));
@@ -135,6 +167,14 @@
       method: 'POST',
       body: credentials
     })),
+    requestPasswordReset: async email => request('/auth/password/reset', {
+      method: 'POST',
+      body: { email }
+    }),
+    confirmPasswordReset: async reset => request('/auth/password/reset/confirm', {
+      method: 'POST',
+      body: reset
+    }),
     register: async account => applyAuthenticatedSession(await request('/auth/register', {
       method: 'POST',
       body: account

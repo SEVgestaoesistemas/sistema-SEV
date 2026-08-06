@@ -20,6 +20,35 @@ test('limite de login aceita configuração temporária por ambiente', () => {
   assert.equal(config.loginRateLimitWindow, '15 minutes');
 });
 
+test('recuperação de senha possui validade segura e exige configuração explícita de SMTP', () => {
+  const defaults = loadConfig({ NODE_ENV: 'test' });
+  assert.equal(defaults.passwordResetTtlMinutes, 30);
+  assert.equal(defaults.smtpHost, 'smtp.gmail.com');
+  assert.equal(defaults.smtpPort, 465);
+  assert.equal(defaults.smtpSecure, true);
+  assert.equal(defaults.smtpUser, undefined);
+  assert.equal(defaults.smtpPass, undefined);
+  assert.equal(defaults.emailFrom, undefined);
+
+  const configured = loadConfig({
+    NODE_ENV: 'test',
+    PASSWORD_RESET_TTL_MINUTES: '45',
+    SMTP_HOST: 'smtp.example.test',
+    SMTP_PORT: '587',
+    SMTP_SECURE: 'false',
+    SMTP_USER: 'smtp-user',
+    SMTP_PASS: 'smtp-password',
+    EMAIL_FROM: 'SEV <acesso@sev.example>'
+  });
+  assert.equal(configured.passwordResetTtlMinutes, 45);
+  assert.equal(configured.smtpHost, 'smtp.example.test');
+  assert.equal(configured.smtpPort, 587);
+  assert.equal(configured.smtpSecure, false);
+  assert.equal(configured.smtpUser, 'smtp-user');
+  assert.equal(configured.smtpPass, 'smtp-password');
+  assert.equal(configured.emailFrom, 'SEV <acesso@sev.example>');
+});
+
 test('chat de suporte possui limites diários seguros e configuráveis', () => {
   const defaults = loadConfig({ NODE_ENV: 'test' });
   assert.equal(defaults.geminiModel, 'gemini-2.5-flash-lite');

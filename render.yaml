@@ -24,11 +24,26 @@ services:
         value: "7"
       - key: SESSION_SAME_SITE
         value: none
-      # Temporário para validação: volte para 5 antes da entrega ao cliente.
+      # Limite de tentativas de login por IP para contas de clientes.
       - key: LOGIN_RATE_LIMIT_MAX
-        value: "20"
+        value: "5"
       - key: LOGIN_RATE_LIMIT_WINDOW
         value: "15 minutes"
+      - key: PASSWORD_RESET_TTL_MINUTES
+        value: "30"
+      # SMTP do Gmail para e-mails transacionais. A senha de app fica apenas no Render.
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_SECURE
+        value: "true"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
       # Segredo do Gemini: cadastre o valor apenas no painel do Render.
       - key: GEMINI_API_KEY
         sync: false

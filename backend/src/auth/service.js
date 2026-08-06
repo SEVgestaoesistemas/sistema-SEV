@@ -1,4 +1,4 @@
-import { randomInt, randomUUID } from 'node:crypto';
+import { randomBytes, randomInt, randomUUID } from 'node:crypto';
 import { AppError } from '../errors.js';
 import { recordAudit } from '../audit.js';
 import { hashPassword, verifyPassword } from '../security/password.js';
@@ -181,7 +181,7 @@ export const changePassword = async (db, { userId, sessionId, currentPassword, n
   );
   const user = result.rows[0];
   if (!user || !(await verifyPassword(currentPassword, user.password_hash))) {
-    throw new AppError('A senha atual está incorreta.', { statusCode: 401, code: 'INVALID_CREDENTIALS' });
+    throw new AppError('A senha atual está incorreta.', { statusCode: 401, code: 'INVALID_CURRENT_PASSWORD' });
   }
   const passwordHash = await hashPassword(newPassword);
   await transaction.query(
@@ -196,5 +196,92 @@ export const changePassword = async (db, { userId, sessionId, currentPassword, n
     entityType: 'user',
     entityId: userId,
     metadata: { revokedOtherSessions: true }
+  });
+});
+
+export const createPasswordResetRequest = async (db, { email, config }) => {
+  const normalizedEmail = normalizeEmail(email);
+  return db.transaction(async transaction => {
+    const accountResult = await transaction.query(
+      `SELECT u.id AS "userId", u.name AS "userName", u.email, membership.organization_id AS "organizationId"
+         FROM users u
+         JOIN organization_memberships membership ON membership.user_id = u.id
+        WHERE u.email = $1 AND u.is_active = true
+        ORDER BY membership.created_at ASC
+        LIMIT 1
+        FOR UPDATE OF u`,
+      [normalizedEmail]
+    );
+    const account = accountResult.rows[0];
+    if (!account) return null;
+
+    const recentRequest = await transaction.query(
+      `SELECT 1
+         FROM password_reset_tokens
+        WHERE user_id = $1 AND created_at > now() - interval '5 minutes'
+        LIMIT 1`,
+      [account.userId]
+    );
+    if (recentRequest.rowCount) return null;
+
+    const token = randomBytes(32).toString('base64url');
+    const tokenHash = hashSessionToken(token);
+    const expiresAt = new Date(Date.now() + config.passwordResetTtlMinutes * 60 * 1000);
+    await transaction.query('DELETE FROM password_reset_tokens WHERE user_id = $1', [account.userId]);
+    const inserted = await transaction.query(
+      `INSERT INTO password_reset_tokens (organization_id, user_id, token_hash, expires_at)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+      [account.organizationId, account.userId, tokenHash, expiresAt]
+    );
+    await recordAudit(transaction, {
+      organizationId: account.organizationId,
+      action: 'auth.password_reset_requested',
+      entityType: 'user',
+      entityId: account.userId
+    });
+    return {
+      idempotencyKey: `password-reset-${inserted.rows[0].id}`,
+      name: account.userName,
+      email: account.email,
+      token
+    };
+  });
+};
+
+export const resetPasswordWithToken = async (db, { token, newPassword }) => db.transaction(async transaction => {
+  const resetResult = await transaction.query(
+    `SELECT reset.id, reset.user_id AS "userId", reset.organization_id AS "organizationId"
+       FROM password_reset_tokens reset
+       JOIN users u ON u.id = reset.user_id
+      WHERE reset.token_hash = $1
+        AND reset.used_at IS NULL
+        AND reset.expires_at > now()
+        AND u.is_active = true
+      FOR UPDATE OF reset`,
+    [hashSessionToken(token)]
+  );
+  const reset = resetResult.rows[0];
+  if (!reset) {
+    throw new AppError('Este link de recuperação é inválido ou expirou. Solicite um novo link.', {
+      statusCode: 400,
+      code: 'INVALID_PASSWORD_RESET_TOKEN'
+    });
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+  await transaction.query(
+    'UPDATE users SET password_hash = $2, force_password_change = false WHERE id = $1',
+    [reset.userId, passwordHash]
+  );
+  await transaction.query('DELETE FROM sessions WHERE user_id = $1', [reset.userId]);
+  await transaction.query('UPDATE password_reset_tokens SET used_at = now() WHERE user_id = $1 AND used_at IS NULL', [reset.userId]);
+  await recordAudit(transaction, {
+    organizationId: reset.organizationId,
+    actorUserId: reset.userId,
+    action: 'auth.password_reset_completed',
+    entityType: 'user',
+    entityId: reset.userId,
+    metadata: { revokedAllSessions: true }
   });
 });

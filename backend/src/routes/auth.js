@@ -134,7 +134,7 @@ export const registerAuthRoutes = async app => {
   });
 
   app.post('/password/reset', {
-    config: { rateLimit: { max: 3, timeWindow: '1 hour' } }
+    config: { rateLimit: { max: 5, timeWindow: '15 minutes' } }
   }, async request => {
     if (!app.emailSender) {
       throw new AppError('A recuperação de senha está temporariamente indisponível. Tente novamente mais tarde ou fale com o suporte.', {

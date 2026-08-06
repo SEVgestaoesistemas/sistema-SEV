@@ -58,6 +58,35 @@ test('login respeita o limite configurado por ambiente', async () => {
   await app.close();
 });
 
+test('recuperação de senha permite cinco solicitações por IP antes de limitar por quinze minutos', async () => {
+  const resetDatabase = {
+    ...database,
+    transaction: async callback => callback({
+      query: async () => ({ rows: [], rowCount: 0 })
+    })
+  };
+  const app = await buildApp({
+    config,
+    db: resetDatabase,
+    emailSender: async () => {},
+    logger: false
+  });
+  const request = () => app.inject({
+    method: 'POST',
+    url: '/api/v1/auth/password/reset',
+    payload: { email: 'cliente@sev.test' }
+  });
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    assert.equal((await request()).statusCode, 200);
+  }
+  const limited = await request();
+  assert.equal(limited.statusCode, 429);
+  assert.equal(limited.headers['x-ratelimit-limit'], '5');
+  assert.equal(limited.json().error.code, 'RATE_LIMITED');
+  await app.close();
+});
+
 test('cadastro público é rejeitado quando a plataforma está em modo por assinatura', async () => {
   const app = await buildApp({ config, db: database, logger: false });
   const response = await app.inject({

@@ -866,6 +866,9 @@ tbody tr:hover{ background: var(--surface-soft); }
 .login-assistance{ margin:2px 0 0; text-align:center; font-size:12px; }
 .login-assistance a{ color:var(--brand); font-weight:700; text-decoration:none; }
 .login-assistance a:hover{ text-decoration:underline; }
+.login-legal-links{ display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:7px; margin-top:8px; color:var(--ink-faint); font-size:11px; }
+.login-legal-links a{ color:var(--ink-faint); text-decoration:none; }
+.login-legal-links a:hover{ color:var(--brand); text-decoration:underline; }
 .login-status{ min-height:18px; margin:0; color:var(--success); font-size:12px; line-height:1.45; }
 .password-change-form{ margin-top:26px; }
 .login-status.error{ color:var(--danger); }

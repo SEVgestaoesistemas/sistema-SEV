@@ -10,18 +10,30 @@
 </head>
 <body class="login-page">
   <main class="login-layout">
-    <section class="login-card" aria-labelledby="resetRequestTitle">
+    <section class="login-card password-recovery-card" aria-labelledby="resetRequestTitle">
       <img class="login-logo" src="assets/sev-logo.jpeg" alt="SEV Gestão &amp; Sistemas">
       <div class="login-heading">
-        <p class="eyebrow">Acesso à conta</p>
+        <p class="eyebrow account-access-badge">
+          <svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>
+          <span>Acesso à conta</span>
+        </p>
         <h1 id="resetRequestTitle">Esqueceu sua senha?</h1>
         <p>Para proteger sua conta, a recuperação é feita pela administração da SEV. Fale conosco para receber uma senha temporária válida por 24 horas.</p>
       </div>
       <section class="login-form password-change-form" aria-label="Contato para recuperar senha">
-        <label class="field"><span>Seu e-mail <small>Opcional</small></span><input id="passwordRecoveryEmail" type="email" autocomplete="email" maxlength="160" placeholder="voce@empresa.com"></label>
-        <p class="login-status" id="passwordResetRequestStatus" role="status" aria-live="polite">Carregando canal de atendimento…</p>
-        <a class="primary-button" id="passwordRecoveryWhatsApp" href="#" target="_blank" rel="noopener noreferrer" hidden>Falar comigo no WhatsApp</a>
-        <p class="login-assistance"><a href="login.html">Voltar para entrar</a></p>
+        <label class="field password-recovery-email">
+          <span class="field-label-row"><span>Seu e-mail</span><small class="optional-chip">Opcional</small></span>
+          <input id="passwordRecoveryEmail" type="email" autocomplete="email" maxlength="160" placeholder="voce@empresa.com">
+        </label>
+        <div class="password-recovery-notice">
+          <svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5"></path><path d="M12 8h.01"></path></svg>
+          <p class="login-status" id="passwordResetRequestStatus" role="status" aria-live="polite">Carregando canal de atendimento…</p>
+        </div>
+        <a class="primary-button button-with-icon" id="passwordRecoveryWhatsApp" href="#" target="_blank" rel="noopener noreferrer" hidden>
+          <svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.5-4.1A8 8 0 1 1 20 11.5Z"></path><path d="M9.4 9.1c.3 1.6 1.5 2.8 3.1 3.1l1.1-1.1c.2-.2.4-.2.6-.1l1.6.6c.3.1.4.3.4.6v1c0 .3-.3.6-.6.6-3.9-.2-7-3.3-7.2-7.2 0-.3.2-.6.6-.6h1c.3 0 .5.2.6.4l.6 1.6c.1.2 0 .5-.1.6Z"></path></svg>
+          <span>Falar comigo no WhatsApp</span>
+        </a>
+        <p class="login-assistance"><a class="back-to-login-link" href="login.html"><svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path><path d="M8 12h11"></path></svg><span>Voltar para entrar</span></a></p>
       </section>
     </section>
   </main>

@@ -20,8 +20,6 @@
   const invoiceItemsBody = document.getElementById('invoiceItemsBody');
   const importedExpensesBody = document.getElementById('importedExpensesBody');
   const importedExpensesSummary = document.getElementById('importedExpensesSummary');
-  const expenseTotal = document.getElementById('financeExpenseTotal');
-  const expenseNote = document.getElementById('financeExpenseNote');
   const reviewSubmitButton = reviewForm.querySelector('button[type="submit"]');
   const maxFileSize = 1500000;
   let selectedFile = null;
@@ -54,11 +52,6 @@
   };
 
   const renderExpenses = () => {
-    const totalCents = expenses.reduce((total, expense) => total + Number(expense.amountCents || 0), 0);
-    expenseTotal.textContent = formatCurrency(totalCents / 100);
-    expenseNote.textContent = expenses.length
-      ? `${expenses.length} despesa${expenses.length === 1 ? '' : 's'} registrada${expenses.length === 1 ? '' : 's'} na empresa`
-      : 'Nenhuma despesa registrada';
     importedExpensesSummary.textContent = expenses.length
       ? `${expenses.length} despesa${expenses.length === 1 ? '' : 's'} sincronizada${expenses.length === 1 ? '' : 's'} com a API.`
       : 'Nenhuma despesa registrada na empresa.';
@@ -87,8 +80,6 @@
       renderExpenses();
       setStatus('');
     } catch (error) {
-      expenseTotal.textContent = '—';
-      expenseNote.textContent = 'Dados indisponíveis';
       importedExpensesSummary.textContent = 'Não foi possível carregar as despesas da empresa.';
       setStatus(error.message || 'Não foi possível carregar as despesas.', true);
     }
@@ -279,6 +270,7 @@
       const createdExpense = await window.SevApi.createExpense(expense);
       expenses = [createdExpense, ...expenses].sort((first, second) => String(second.dueDate).localeCompare(String(first.dueDate)));
       renderExpenses();
+      window.dispatchEvent(new CustomEvent('sev:finance-data-changed'));
       clearSelection();
       setStatus(`Despesa de ${formatCurrency(amount)} salva na empresa após sua confirmação.`);
     } catch (error) {

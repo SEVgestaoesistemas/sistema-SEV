@@ -8,6 +8,10 @@
   const amountElement = document.getElementById('paymentAmount');
   const percentElement = document.getElementById('paymentPercent');
   const statusElement = document.getElementById('paymentStatus');
+  const balanceElement = document.getElementById('financeBalanceTotal');
+  const balanceNoteElement = document.getElementById('financeBalanceNote');
+  const revenueElement = document.getElementById('financeRevenueTotal');
+  const expenseElement = document.getElementById('financeExpenseTotal');
   const methods = {
     pix: { label: 'Pix', color: 'var(--brand)' },
     card: { label: 'Cartão', color: 'var(--info)' },
@@ -29,6 +33,24 @@
   const setStatus = (message = '', isError = false) => {
     statusElement.textContent = message;
     statusElement.classList.toggle('error', isError);
+  };
+
+  const renderFinancialSummary = financialSummary => {
+    if (!financialSummary) return;
+    const revenueCents = Number(financialSummary.revenueCents || 0);
+    const expenseCents = Number(financialSummary.expenseCents || 0);
+    const balanceCents = Number(financialSummary.balanceCents || 0);
+    balanceElement.textContent = formatCurrency(balanceCents);
+    balanceNoteElement.textContent = 'Receitas confirmadas menos despesas lançadas';
+    revenueElement.textContent = formatCurrency(revenueCents);
+    expenseElement.textContent = formatCurrency(expenseCents);
+  };
+
+  const renderFinancialSummaryUnavailable = () => {
+    balanceElement.textContent = '—';
+    balanceNoteElement.textContent = 'Dados indisponíveis';
+    revenueElement.textContent = '—';
+    expenseElement.textContent = '—';
   };
 
   const percentage = payment => {
@@ -89,12 +111,14 @@
       const user = await window.SevAuth.ready;
       if (!user) return;
       const dashboard = await window.SevApi.getFinanceDashboard();
+      renderFinancialSummary(dashboard.financialSummary);
       payments = (dashboard.paymentMethods || [])
         .filter(payment => Number(payment.totalCents || 0) > 0)
         .sort((left, right) => Number(right.totalCents || 0) - Number(left.totalCents || 0));
       render();
       setStatus('');
     } catch (error) {
+      renderFinancialSummaryUnavailable();
       donut.style.removeProperty('--payment-donut');
       donut.setAttribute('aria-label', 'Não foi possível carregar as formas de pagamento.');
       methodElement.textContent = 'Indisponível';
@@ -110,5 +134,6 @@
     if (button) selectPayment(button.dataset.payment);
   });
 
+  window.addEventListener('sev:finance-data-changed', loadPayments);
   loadPayments();
 })();

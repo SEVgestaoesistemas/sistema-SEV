@@ -56,6 +56,12 @@ test('papéis bloqueiam rotas restritas e nunca expõem valores financeiros masc
          VALUES ($1, $2, 'pix', 'paid', 15990, $3)`,
         [organization.rows[0].id, customer.rows[0].id, users.owner]
       );
+      await transaction.query(
+        `INSERT INTO expenses (organization_id, supplier_name, due_date, category, description, amount_cents, status)
+         VALUES ($1, 'Test supplier', CURRENT_DATE, 'Operational', 'Confirmed expense', 1990, 'paid'),
+                ($1, 'Cancelled supplier', CURRENT_DATE, 'Operational', 'Cancelled expense', 5000, 'cancelled')`,
+        [organization.rows[0].id]
+      );
       const sessions = {};
       for (const [role, userId] of Object.entries(users)) {
         sessions[role] = await createStoredSession(transaction, {
@@ -96,6 +102,11 @@ test('papéis bloqueiam rotas restritas e nunca expõem valores financeiros masc
     const financeDashboard = await app.inject({ method: 'GET', url: '/api/v1/finance/dashboard', headers: financeHeaders });
     assert.equal(financeDashboard.statusCode, 200);
     assert.equal(financeDashboard.json().dashboard.summary.revenueCents, 15990);
+    assert.deepEqual(financeDashboard.json().dashboard.financialSummary, {
+      revenueCents: 15990,
+      expenseCents: 1990,
+      balanceCents: 14000
+    });
 
     const financeProductWrite = await app.inject({
       method: 'POST', url: '/api/v1/products', headers: financeHeaders,

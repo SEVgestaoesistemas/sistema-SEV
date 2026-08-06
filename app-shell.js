@@ -14,9 +14,9 @@
           <p>Acompanhe receitas, despesas e o saldo consolidado da operação.</p>
         </section>
         <section class="module-grid">
-          <article class="module-card"><span>Saldo atual</span><strong>R$ 61.900</strong><small>Receitas menos despesas no período</small></article>
-          <article class="module-card"><span>Receitas</span><strong>R$ 128.400</strong><small>Últimos 30 dias</small></article>
-          <article class="module-card"><span>Despesas</span><strong id="financeExpenseTotal">R$ 66.500</strong><small id="financeExpenseNote">Últimos 30 dias</small></article>
+          <article class="module-card"><span>Saldo atual</span><strong id="financeBalanceTotal">R$ 0,00</strong><small id="financeBalanceNote">Carregando dados da empresa...</small></article>
+          <article class="module-card"><span>Receitas</span><strong id="financeRevenueTotal">R$ 0,00</strong><small id="financeRevenueNote">Vendas confirmadas da empresa</small></article>
+          <article class="module-card"><span>Despesas</span><strong id="financeExpenseTotal">R$ 0,00</strong><small id="financeExpenseNote">Despesas lançadas da empresa</small></article>
         </section>
         <section class="invoice-import-panel" aria-labelledby="invoiceImportTitle">
           <div class="settings-panel-head invoice-panel-head"><div><h2 id="invoiceImportTitle">Importar XML de NF-e</h2><p>Envie o XML da NF-e para extrair os dados antes de registrar uma despesa.</p></div><span class="local-label">Leitura real de XML</span></div>

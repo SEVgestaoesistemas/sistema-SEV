@@ -127,7 +127,7 @@ const assertUniqueProducts = items => {
 };
 
 const loadDashboard = async (db, organizationId) => {
-  const [summaryResult, stockResult, monthlyResult, paymentResult, recentResult] = await Promise.all([
+  const [summaryResult, financialResult, stockResult, monthlyResult, paymentResult, recentResult] = await Promise.all([
     db.query(
       `SELECT
          COALESCE(SUM(total_cents) FILTER (WHERE payment_status = 'paid'), 0) AS "revenueCents",
@@ -137,6 +137,20 @@ const loadDashboard = async (db, organizationId) => {
        FROM sales
       WHERE organization_id = $1
         AND created_at >= date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo')`,
+      [organizationId]
+    ),
+    db.query(
+      `SELECT
+         COALESCE((
+           SELECT SUM(total_cents)
+             FROM sales
+            WHERE organization_id = $1 AND payment_status = 'paid'
+         ), 0) AS "revenueCents",
+         COALESCE((
+           SELECT SUM(amount_cents)
+             FROM expenses
+            WHERE organization_id = $1 AND status <> 'cancelled'
+         ), 0) AS "expenseCents"`,
       [organizationId]
     ),
     db.query(
@@ -199,8 +213,16 @@ const loadDashboard = async (db, organizationId) => {
   ]);
 
   const summary = summaryResult.rows[0];
+  const financial = financialResult.rows[0];
+  const revenueCents = moneyNumber(financial.revenueCents);
+  const expenseCents = moneyNumber(financial.expenseCents);
   const stock = stockResult.rows[0];
   return {
+    financialSummary: {
+      revenueCents,
+      expenseCents,
+      balanceCents: revenueCents - expenseCents
+    },
     summary: {
       revenueCents: moneyNumber(summary.revenueCents),
       orderCount: Number(summary.orderCount),

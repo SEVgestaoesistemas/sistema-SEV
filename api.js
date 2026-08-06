@@ -17,6 +17,8 @@
     RATE_LIMITED: 'Muitas tentativas em pouco tempo. Aguarde alguns minutos antes de tentar novamente.',
     SERVICE_UNAVAILABLE: 'Este serviço está temporariamente indisponível. Tente novamente em alguns minutos.',
     EMAIL_DELIVERY_UNAVAILABLE: 'A recuperação de senha está temporariamente indisponível. Tente novamente mais tarde.',
+    MANUAL_PASSWORD_RESET_REQUIRED: 'Para redefinir a senha, fale com o suporte da SEV.',
+    TEMPORARY_PASSWORD_EXPIRED: 'A senha temporária expirou. Fale com o suporte para receber uma nova senha.',
     INTERNAL_ERROR: 'O servidor encontrou um problema temporário. Nenhuma alteração foi confirmada; tente novamente em alguns minutos.',
     INVALID_PASSWORD_RESET_TOKEN: 'Este link de recuperação é inválido ou expirou. Solicite um novo link.',
     PLAN_EXPIRED: 'O plano desta empresa expirou. Entre em contato com a SEV para regularizar o acesso.',
@@ -163,6 +165,7 @@
     baseUrl: API_BASE_URL,
     request,
     getCurrentUser: () => request('/auth/me'),
+    getManualPasswordResetContact: () => request('/public/support-contact'),
     login: async credentials => applyAuthenticatedSession(await request('/auth/login', {
       method: 'POST',
       body: credentials
@@ -206,6 +209,7 @@
       body: payload
     })).administrator,
     getPlatformCompanies: async () => (await request('/platform/companies')).companies,
+    getPlatformCompanyUsers: id => request(`/platform/companies/${encodeURIComponent(id)}/users`),
     createPlatformCompany: async company => request('/platform/companies', {
       method: 'POST',
       body: company,
@@ -230,6 +234,10 @@
       method: 'POST',
       csrf: true
     }),
+    resetPlatformCompanyUserPassword: async (companyId, userId) => request(
+      `/platform/companies/${encodeURIComponent(companyId)}/users/${encodeURIComponent(userId)}/temporary-password`,
+      { method: 'POST', csrf: true }
+    ),
     deletePlatformCompany: async (id, confirmationName) => request(`/platform/companies/${encodeURIComponent(id)}`, {
       method: 'DELETE',
       body: { confirmationName },

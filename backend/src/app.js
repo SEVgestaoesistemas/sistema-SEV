@@ -7,6 +7,7 @@ import { AppError } from './errors.js';
 import { loadConfig } from './config.js';
 import { createDatabase } from './db/database.js';
 import { registerHealthRoutes } from './routes/health.js';
+import { registerPublicRoutes } from './routes/public.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerProductRoutes } from './routes/products.js';
 import { registerExpenseRoutes } from './routes/expenses.js';
@@ -20,13 +21,11 @@ import { registerReceivableRoutes } from './routes/receivables.js';
 import { registerReportRoutes } from './routes/reports.js';
 import { registerSupportRoutes } from './routes/support.js';
 import { createGeminiChat } from './support/gemini.js';
-import { createEmailSender } from './email.js';
 
 export const buildApp = async (options = {}) => {
   const config = options.config || loadConfig();
   const db = options.db || createDatabase(config);
   const geminiChat = options.geminiChat || createGeminiChat(config);
-  const emailSender = options.emailSender ?? createEmailSender(config);
   const app = Fastify({
     logger: options.logger ?? config.environment !== 'test',
     trustProxy: config.trustProxy,
@@ -36,7 +35,6 @@ export const buildApp = async (options = {}) => {
   app.decorate('config', config);
   app.decorate('db', db);
   app.decorate('geminiChat', geminiChat);
-  app.decorate('emailSender', emailSender);
   app.decorateRequest('auth', null);
   app.decorateRequest('tenantDb', null);
 
@@ -107,6 +105,7 @@ export const buildApp = async (options = {}) => {
 
   app.get('/', async () => ({ service: 'sev-backend', version: 'v1' }));
   await app.register(registerHealthRoutes, { prefix: '/api/v1' });
+  await app.register(registerPublicRoutes, { prefix: '/api/v1' });
   await app.register(registerAuthRoutes, { prefix: '/api/v1/auth' });
   await app.register(registerProductRoutes, { prefix: '/api/v1' });
   await app.register(registerExpenseRoutes, { prefix: '/api/v1' });

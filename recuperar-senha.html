@@ -1,2 +1,31 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Recuperar senha · SEV Gestão &amp; Sistemas</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="styles.css"></head><body class="login-page"><main class="login-layout"><section class="login-card" aria-labelledby="resetRequestTitle"><img class="login-logo" src="assets/sev-logo.jpeg" alt="SEV Gestão &amp; Sistemas"><div class="login-heading"><p class="eyebrow">Acesso à conta</p><h1 id="resetRequestTitle">Recupere sua senha</h1><p>Informe seu e-mail. Se houver uma conta ativa vinculada a ele, enviaremos um link seguro para redefinir a senha.</p></div><form class="login-form password-change-form" id="passwordResetRequestForm"><label class="field"><span>E-mail</span><input name="email" type="email" autocomplete="email" maxlength="160" required></label><p class="login-status" id="passwordResetRequestStatus" role="status" aria-live="polite"></p><button class="primary-button" type="submit" data-label="Enviar link de recuperação">Enviar link de recuperação</button><p class="login-assistance"><a href="login.html">Voltar para entrar</a></p></form></section></main><script src="api.js"></script><script src="password-reset-request.js"></script></body></html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recuperar senha · SEV Gestão &amp; Sistemas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="login-page">
+  <main class="login-layout">
+    <section class="login-card" aria-labelledby="resetRequestTitle">
+      <img class="login-logo" src="assets/sev-logo.jpeg" alt="SEV Gestão &amp; Sistemas">
+      <div class="login-heading">
+        <p class="eyebrow">Acesso à conta</p>
+        <h1 id="resetRequestTitle">Esqueceu sua senha?</h1>
+        <p>Para proteger sua conta, a recuperação é feita pela administração da SEV. Fale conosco para receber uma senha temporária válida por 24 horas.</p>
+      </div>
+      <section class="login-form password-change-form" aria-label="Contato para recuperar senha">
+        <label class="field"><span>Seu e-mail <small>Opcional</small></span><input id="passwordRecoveryEmail" type="email" autocomplete="email" maxlength="160" placeholder="voce@empresa.com"></label>
+        <p class="login-status" id="passwordResetRequestStatus" role="status" aria-live="polite">Carregando canal de atendimento…</p>
+        <a class="primary-button" id="passwordRecoveryWhatsApp" href="#" target="_blank" rel="noopener noreferrer" hidden>Falar comigo no WhatsApp</a>
+        <p class="login-assistance"><a href="login.html">Voltar para entrar</a></p>
+      </section>
+    </section>
+  </main>
+  <script src="api.js"></script>
+  <script src="password-reset-request.js"></script>
+</body>
+</html>

@@ -233,7 +233,7 @@
             <p id="temporaryAccessEmail"></p>
             <label>Senha temporária<input id="temporaryAccessPassword" type="text" readonly></label>
             <button class="secondary-button" id="copyTemporaryPassword" type="button">Copiar senha</button>
-            <small>Entregue esta senha ao cliente por um canal seguro. Ela não poderá ser consultada novamente.</small>
+            <small id="temporaryAccessExpiration">Entregue esta senha ao cliente por um canal seguro. Ela não poderá ser consultada novamente.</small>
           </aside>
         </section>
         <section class="settings-panel platform-list-panel" aria-labelledby="platformCompaniesTitle">
@@ -253,6 +253,13 @@
               <label class="field"><span>E-mail do responsável</span><input name="administratorEmail" type="email" maxlength="160" autocomplete="email" required></label>
               <div class="profile-modal-actions"><p id="platformAdministratorStatus" role="status" aria-live="polite"></p><button class="primary-button" type="submit">Salvar responsável</button></div>
             </form>
+          </div>
+        </div>
+        <div class="profile-modal" id="platformUsersModal" role="dialog" aria-modal="true" aria-labelledby="platformUsersModalTitle" hidden>
+          <div class="profile-modal-card platform-support-modal-card">
+            <div class="profile-modal-head"><div><h2 id="platformUsersModalTitle">Usuários da empresa</h2><p id="platformUsersModalCompany"></p></div><button class="modal-close" id="closePlatformUsersModal" type="button" aria-label="Fechar">×</button></div>
+            <p class="platform-support-modal-status" id="platformUsersModalStatus" role="status" aria-live="polite"></p>
+            <div class="table-wrap"><table class="platform-support-history-table"><thead><tr><th>Usuário</th><th>Função</th><th>Situação</th><th>Ação</th></tr></thead><tbody id="platformUsersBody"></tbody></table></div>
           </div>
         </div>
         <div class="profile-modal" id="platformSupportModal" role="dialog" aria-modal="true" aria-labelledby="platformSupportModalTitle" hidden>

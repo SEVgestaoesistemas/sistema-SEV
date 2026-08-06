@@ -29,20 +29,8 @@ services:
         value: "5"
       - key: LOGIN_RATE_LIMIT_WINDOW
         value: "15 minutes"
-      - key: PASSWORD_RESET_TTL_MINUTES
-        value: "30"
-      # SMTP do Gmail para e-mails transacionais. A senha de app fica apenas no Render.
-      - key: SMTP_HOST
-        value: smtp.gmail.com
-      - key: SMTP_PORT
-        value: "587"
-      - key: SMTP_SECURE
-        value: "false"
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASS
-        sync: false
-      - key: EMAIL_FROM
+      # Canal de recuperaÃ§Ã£o manual exibido na tela de login. Informe somente DDI + nÃºmero.
+      - key: ADMIN_WHATSAPP_NUMBER
         sync: false
       # Segredo do Gemini: cadastre o valor apenas no painel do Render.
       - key: GEMINI_API_KEY

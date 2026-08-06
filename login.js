@@ -4,6 +4,7 @@
 
   const loginForm = document.getElementById('loginForm');
   const loginStatus = document.getElementById('loginStatus');
+  const forgotPasswordLink = document.getElementById('forgotPasswordLink');
   const requestedNext = new URLSearchParams(window.location.search).get('next');
   const allowedPages = new Set(['index.html', 'estoque.html', 'financeiro.html', 'vendas.html', 'relatorios.html', 'equipe.html', 'configuracoes.html', 'plataforma.html']);
   const nextPage = requestedNext && allowedPages.has(requestedNext.split('?')[0].split('#')[0]) ? requestedNext : 'index.html';
@@ -44,6 +45,16 @@
       showStatus(loginStatus, error.message, true);
     } finally {
       setSubmitting(loginForm, false);
+    }
+  });
+
+  forgotPasswordLink?.addEventListener('click', () => {
+    try {
+      const email = loginForm.elements.email.value.trim().toLowerCase();
+      if (email) sessionStorage.setItem('sev.password-recovery-email', email);
+      else sessionStorage.removeItem('sev.password-recovery-email');
+    } catch {
+      // The recovery screen also works when browser storage is unavailable.
     }
   });
 

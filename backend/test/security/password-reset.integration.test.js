@@ -15,160 +15,166 @@ const headersFor = session => ({
   'x-csrf-token': session.csrfToken
 });
 
-const tokenFromEmail = message => {
-  const match = message.text.match(/redefinir-senha\.html#token=([A-Za-z0-9_-]{40,128})/);
-  assert.ok(match, 'O e-mail deve conter um token de recuperação no fragmento da URL.');
-  return match[1];
+const cookieFrom = response => {
+  const value = response.headers['set-cookie'];
+  return (Array.isArray(value) ? value[0] : value).split(';')[0];
 };
 
-test('recuperação de senha é neutra, única, expira e revoga sessões de qualquer papel', { skip: !enabled }, async () => {
-  const config = {
-    ...loadConfig(),
-    frontendUrl: 'https://sevgestaoesistemas.github.io/sistema-SEV',
-    passwordResetTtlMinutes: 30
-  };
-  assert.ok(config.databaseUrl, 'DATABASE_URL is required for the password reset integration test.');
+test('administrador da plataforma cria senha provisória de uso obrigatório, expira e só alcança usuário da empresa', { skip: !enabled }, async () => {
+  const config = { ...loadConfig(), environment: 'test' };
+  assert.ok(config.databaseUrl, 'DATABASE_URL is required for the temporary password integration test.');
 
   const database = createDatabase(config);
-  const deliveries = [];
-  const emailSender = async message => { deliveries.push(message); };
   let app;
   let fixture;
   try {
     fixture = await database.transaction(async transaction => {
-      const organization = await transaction.query(
+      const companyA = await transaction.query(
         'INSERT INTO organizations (name, slug) VALUES ($1, $2) RETURNING id',
-        ['Password Reset Company', `password-reset-${randomUUID()}`]
+        ['Temporary Password Company A', `temporary-password-a-${randomUUID()}`]
       );
-      const passwordHash = await hashPassword('TemporaryTestPassword2026');
-      const operator = await transaction.query(
-        'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, email',
-        ['Password Reset Operator', `password-reset-operator-${randomUUID()}@test.invalid`, passwordHash]
+      const companyB = await transaction.query(
+        'INSERT INTO organizations (name, slug) VALUES ($1, $2) RETURNING id',
+        ['Temporary Password Company B', `temporary-password-b-${randomUUID()}`]
       );
-      const finance = await transaction.query(
+      const platformPasswordHash = await hashPassword('PlatformPassword2026!');
+      const customerPasswordHash = await hashPassword('CustomerPassword2026!');
+      const platformAdmin = await transaction.query(
         'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, email',
-        ['Password Reset Finance', `password-reset-finance-${randomUUID()}@test.invalid`, passwordHash]
+        ['Platform Administrator', `platform-admin-${randomUUID()}@test.invalid`, platformPasswordHash]
+      );
+      const customer = await transaction.query(
+        'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, email',
+        ['Customer Operator', `customer-operator-${randomUUID()}@test.invalid`, customerPasswordHash]
+      );
+      const otherCompanyUser = await transaction.query(
+        'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id',
+        ['Other Company User', `other-company-${randomUUID()}@test.invalid`, customerPasswordHash]
       );
       await transaction.query(
         `INSERT INTO organization_memberships (organization_id, user_id, role)
-         VALUES ($1, $2, 'operator'), ($1, $3, 'finance')`,
-        [organization.rows[0].id, operator.rows[0].id, finance.rows[0].id]
+         VALUES ($1, $2, 'owner'), ($1, $3, 'operator'), ($4, $5, 'owner')`,
+        [companyA.rows[0].id, platformAdmin.rows[0].id, customer.rows[0].id, companyB.rows[0].id, otherCompanyUser.rows[0].id]
       );
-      const firstSession = await createStoredSession(transaction, {
-        userId: operator.rows[0].id,
-        organizationId: organization.rows[0].id,
-        config
+      await transaction.query('INSERT INTO platform_administrators (user_id) VALUES ($1)', [platformAdmin.rows[0].id]);
+      const platformSession = await createStoredSession(transaction, {
+        userId: platformAdmin.rows[0].id, organizationId: companyA.rows[0].id, config
       });
-      const secondSession = await createStoredSession(transaction, {
-        userId: operator.rows[0].id,
-        organizationId: organization.rows[0].id,
-        config
+      const customerSessionA = await createStoredSession(transaction, {
+        userId: customer.rows[0].id, organizationId: companyA.rows[0].id, config
+      });
+      const customerSessionB = await createStoredSession(transaction, {
+        userId: customer.rows[0].id, organizationId: companyA.rows[0].id, config
       });
       return {
-        organizationId: organization.rows[0].id,
-        userIds: [operator.rows[0].id, finance.rows[0].id],
-        operator: operator.rows[0],
-        finance: finance.rows[0],
-        firstSession,
-        secondSession
+        companyAId: companyA.rows[0].id,
+        companyBId: companyB.rows[0].id,
+        platformAdmin: platformAdmin.rows[0],
+        customer: customer.rows[0],
+        otherCompanyUserId: otherCompanyUser.rows[0].id,
+        userIds: [platformAdmin.rows[0].id, customer.rows[0].id, otherCompanyUser.rows[0].id],
+        platformSession,
+        customerSessionA,
+        customerSessionB
       };
     });
 
-    app = await buildApp({ config: { ...config, environment: 'test' }, db: database, emailSender, logger: false });
+    app = await buildApp({ config, db: database, logger: false });
+    const platformHeaders = headersFor(fixture.platformSession);
 
-    const missingAccount = await app.inject({
-      method: 'POST',
-      url: '/api/v1/auth/password/reset',
-      payload: { email: `missing-${randomUUID()}@test.invalid` }
+    const listed = await app.inject({
+      method: 'GET', url: `/api/v1/platform/companies/${fixture.companyAId}/users`, headers: platformHeaders
     });
-    assert.equal(missingAccount.statusCode, 200);
-    assert.deepEqual(missingAccount.json(), { accepted: true });
-    assert.equal(deliveries.length, 0);
+    assert.equal(listed.statusCode, 200);
+    assert.equal(listed.json().users.some(user => user.id === fixture.customer.id && user.role === 'operator'), true);
+    assert.equal(listed.json().users.some(user => Object.hasOwn(user, 'temporaryPassword')), false);
 
-    const operatorRequest = await app.inject({
+    const crossCompany = await app.inject({
       method: 'POST',
-      url: '/api/v1/auth/password/reset',
-      payload: { email: fixture.operator.email }
+      url: `/api/v1/platform/companies/${fixture.companyAId}/users/${fixture.otherCompanyUserId}/temporary-password`,
+      headers: platformHeaders
     });
-    assert.equal(operatorRequest.statusCode, 200);
-    assert.deepEqual(operatorRequest.json(), missingAccount.json());
-    assert.equal(deliveries.length, 1);
-    assert.equal(deliveries[0].to, fixture.operator.email);
-    const operatorToken = tokenFromEmail(deliveries[0]);
+    assert.equal(crossCompany.statusCode, 404);
+    assert.equal(crossCompany.json().error.code, 'COMPANY_USER_NOT_FOUND');
 
-    const storedToken = await database.query(
-      'SELECT token_hash FROM password_reset_tokens WHERE user_id = $1',
-      [fixture.userIds[0]]
+    const protectedAccount = await app.inject({
+      method: 'POST',
+      url: `/api/v1/platform/companies/${fixture.companyAId}/users/${fixture.platformAdmin.id}/temporary-password`,
+      headers: platformHeaders
+    });
+    assert.equal(protectedAccount.statusCode, 403);
+    assert.equal(protectedAccount.json().error.code, 'PLATFORM_ADMIN_PROTECTED');
+
+    const reset = await app.inject({
+      method: 'POST',
+      url: `/api/v1/platform/companies/${fixture.companyAId}/users/${fixture.customer.id}/temporary-password`,
+      headers: platformHeaders
+    });
+    assert.equal(reset.statusCode, 200);
+    const temporary = reset.json().user;
+    assert.equal(temporary.id, fixture.customer.id);
+    assert.match(temporary.temporaryPassword, /[a-z]/);
+    assert.match(temporary.temporaryPassword, /[A-Z]/);
+    assert.match(temporary.temporaryPassword, /[0-9]/);
+    assert.match(temporary.temporaryPassword, /[!@#$%*\-_]/);
+    assert.ok(temporary.temporaryPasswordExpiresAt);
+
+    const stored = await database.query(
+      'SELECT password_hash, force_password_change, temporary_password_expires_at FROM users WHERE id = $1',
+      [fixture.customer.id]
     );
-    assert.equal(storedToken.rowCount, 1);
-    assert.notEqual(storedToken.rows[0].token_hash, operatorToken);
+    assert.equal(stored.rows[0].force_password_change, true);
+    assert.notEqual(stored.rows[0].password_hash, temporary.temporaryPassword);
+    assert.ok(new Date(stored.rows[0].temporary_password_expires_at).getTime() > Date.now());
 
-    const financeRequest = await app.inject({
-      method: 'POST',
-      url: '/api/v1/auth/password/reset',
-      payload: { email: fixture.finance.email }
-    });
-    assert.equal(financeRequest.statusCode, 200);
-    const financeToken = tokenFromEmail(deliveries[1]);
-    await database.query(
-      `UPDATE password_reset_tokens
-          SET created_at = now() - interval '2 hours', expires_at = now() - interval '1 hour'
-        WHERE user_id = $1`,
-      [fixture.userIds[1]]
-    );
-    const expired = await app.inject({
-      method: 'POST',
-      url: '/api/v1/auth/password/reset/confirm',
-      payload: { token: financeToken, newPassword: 'NewSecurePassword2026' }
-    });
-    assert.equal(expired.statusCode, 400);
-    assert.equal(expired.json().error.code, 'INVALID_PASSWORD_RESET_TOKEN');
-
-    const completed = await app.inject({
-      method: 'POST',
-      url: '/api/v1/auth/password/reset/confirm',
-      payload: { token: operatorToken, newPassword: 'NewSecurePassword2026' }
-    });
-    assert.equal(completed.statusCode, 200);
-    assert.deepEqual(completed.json(), { updated: true });
-    assert.equal(completed.headers['set-cookie'], undefined);
-
-    for (const session of [fixture.firstSession, fixture.secondSession]) {
-      const response = await app.inject({
-        method: 'GET',
-        url: '/api/v1/auth/me',
-        headers: headersFor(session)
-      });
-      assert.equal(response.statusCode, 401);
+    for (const session of [fixture.customerSessionA, fixture.customerSessionB]) {
+      const revoked = await app.inject({ method: 'GET', url: '/api/v1/auth/me', headers: headersFor(session) });
+      assert.equal(revoked.statusCode, 401);
     }
 
-    const reusedToken = await app.inject({
-      method: 'POST',
-      url: '/api/v1/auth/password/reset/confirm',
-      payload: { token: operatorToken, newPassword: 'AnotherSecurePassword2026' }
+    const temporaryLogin = await app.inject({
+      method: 'POST', url: '/api/v1/auth/login', payload: { email: fixture.customer.email, password: temporary.temporaryPassword }
     });
-    assert.equal(reusedToken.statusCode, 400);
-    assert.equal(reusedToken.json().error.code, 'INVALID_PASSWORD_RESET_TOKEN');
+    assert.equal(temporaryLogin.statusCode, 200);
+    assert.equal(temporaryLogin.json().user.passwordChangeRequired, true);
+    const temporaryHeaders = { cookie: cookieFrom(temporaryLogin), 'x-csrf-token': temporaryLogin.json().csrfToken };
 
-    const previousPassword = await app.inject({
-      method: 'POST',
-      url: '/api/v1/auth/login',
-      payload: { email: fixture.operator.email, password: 'TemporaryTestPassword2026' }
-    });
-    assert.equal(previousPassword.statusCode, 401);
-    assert.equal(previousPassword.json().error.code, 'INVALID_CREDENTIALS');
+    const blocked = await app.inject({ method: 'GET', url: '/api/v1/profile', headers: temporaryHeaders });
+    assert.equal(blocked.statusCode, 403);
+    assert.equal(blocked.json().error.code, 'PASSWORD_CHANGE_REQUIRED');
 
-    const newPassword = await app.inject({
-      method: 'POST',
-      url: '/api/v1/auth/login',
-      payload: { email: fixture.operator.email, password: 'NewSecurePassword2026' }
+    const changed = await app.inject({
+      method: 'POST', url: '/api/v1/auth/password/change', headers: temporaryHeaders,
+      payload: { currentPassword: temporary.temporaryPassword, newPassword: 'NewCustomerPassword2026!' }
     });
-    assert.equal(newPassword.statusCode, 200);
-    assert.equal(newPassword.json().user.organization.role, 'operator');
+    assert.equal(changed.statusCode, 200);
+    const cleared = await database.query(
+      'SELECT force_password_change, temporary_password_expires_at FROM users WHERE id = $1',
+      [fixture.customer.id]
+    );
+    assert.equal(cleared.rows[0].force_password_change, false);
+    assert.equal(cleared.rows[0].temporary_password_expires_at, null);
+
+    const expiredReset = await app.inject({
+      method: 'POST',
+      url: `/api/v1/platform/companies/${fixture.companyAId}/users/${fixture.customer.id}/temporary-password`,
+      headers: platformHeaders
+    });
+    assert.equal(expiredReset.statusCode, 200);
+    await database.query(
+      "UPDATE users SET temporary_password_expires_at = now() - interval '1 minute' WHERE id = $1",
+      [fixture.customer.id]
+    );
+    const expiredLogin = await app.inject({
+      method: 'POST', url: '/api/v1/auth/login',
+      payload: { email: fixture.customer.email, password: expiredReset.json().user.temporaryPassword }
+    });
+    assert.equal(expiredLogin.statusCode, 403);
+    assert.equal(expiredLogin.json().error.code, 'TEMPORARY_PASSWORD_EXPIRED');
   } finally {
     if (fixture) {
       await database.transaction(async transaction => {
-        await transaction.query('DELETE FROM organizations WHERE id = $1', [fixture.organizationId]);
+        await transaction.query('DELETE FROM organizations WHERE id = ANY($1::uuid[])', [[fixture.companyAId, fixture.companyBId]]);
         await transaction.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [fixture.userIds]);
       });
     }

@@ -103,9 +103,67 @@ const preventPlatformAdministratorChange = administrator => {
   }
 };
 
+const requireCompanyUser = async (db, companyId, userId) => {
+  const result = await db.query(
+    `SELECT u.id, u.name, u.email, u.is_active AS "isActive", membership.role,
+            EXISTS (SELECT 1 FROM platform_administrators pa WHERE pa.user_id = u.id) AS "isPlatformAdministrator"
+       FROM organization_memberships membership
+       JOIN users u ON u.id = membership.user_id
+      WHERE membership.organization_id = $1 AND u.id = $2
+      FOR UPDATE OF u`,
+    [companyId, userId]
+  );
+  if (!result.rowCount) {
+    throw new AppError('Usuário não encontrado nesta empresa.', { statusCode: 404, code: 'COMPANY_USER_NOT_FOUND' });
+  }
+  return result.rows[0];
+};
+
+const resetCompanyUserPasswordInTransaction = async (transaction, companyId, userId, actor) => {
+  const account = await requireCompanyUser(transaction, companyId, userId);
+  preventPlatformAdministratorChange(account);
+  const temporaryPassword = generateTemporaryPassword();
+  const passwordHash = await hashPassword(temporaryPassword);
+  const updated = await transaction.query(
+    `UPDATE users
+        SET password_hash = $2,
+            force_password_change = true,
+            temporary_password_expires_at = now() + interval '24 hours'
+      WHERE id = $1
+      RETURNING id, name, email, temporary_password_expires_at AS "temporaryPasswordExpiresAt"`,
+    [account.id, passwordHash]
+  );
+  await transaction.query('DELETE FROM sessions WHERE user_id = $1', [account.id]);
+  await recordAudit(transaction, {
+    organizationId: companyId,
+    actorUserId: actor.id,
+    action: 'platform.user_temporary_password_reset',
+    entityType: 'user',
+    entityId: account.id,
+    metadata: { role: account.role, expiresInHours: 24 }
+  });
+  return { ...updated.rows[0], temporaryPassword };
+};
+
 export const listCompanies = async db => {
   const result = await db.query(`${companySelect} ORDER BY o.created_at DESC`);
   return result.rows.map(toCompany);
+};
+
+export const listCompanyUsers = async (db, companyId) => {
+  const company = await requireCompany(db, companyId);
+  const result = await db.query(
+    `SELECT u.id, u.name, u.email, u.is_active AS "isActive", membership.role,
+            u.force_password_change AS "passwordChangeRequired",
+            u.temporary_password_expires_at AS "temporaryPasswordExpiresAt",
+            EXISTS (SELECT 1 FROM platform_administrators pa WHERE pa.user_id = u.id) AS "isPlatformAdministrator"
+       FROM organization_memberships membership
+       JOIN users u ON u.id = membership.user_id
+      WHERE membership.organization_id = $1
+      ORDER BY membership.created_at ASC`,
+    [companyId]
+  );
+  return { company, users: result.rows };
 };
 
 export const listCompanySupportConversations = async (db, companyId) => {
@@ -156,9 +214,9 @@ export const createCompany = async (db, payload, actor) => db.transaction(async 
   );
   const companyId = organizationResult.rows[0].id;
   const userResult = await transaction.query(
-    `INSERT INTO users (name, email, password_hash, force_password_change)
-     VALUES ($1, $2, $3, true)
-     RETURNING id, name, email`,
+    `INSERT INTO users (name, email, password_hash, force_password_change, temporary_password_expires_at)
+     VALUES ($1, $2, $3, true, now() + interval '24 hours')
+     RETURNING id, name, email, temporary_password_expires_at AS "temporaryPasswordExpiresAt"`,
     [payload.administratorName.trim(), email, passwordHash]
   );
   const administrator = userResult.rows[0];
@@ -177,7 +235,13 @@ export const createCompany = async (db, payload, actor) => db.transaction(async 
   });
   return {
     company,
-    administrator: { id: administrator.id, name: administrator.name, email: administrator.email, temporaryPassword }
+    administrator: {
+      id: administrator.id,
+      name: administrator.name,
+      email: administrator.email,
+      temporaryPassword,
+      temporaryPasswordExpiresAt: administrator.temporaryPasswordExpiresAt
+    }
   };
 });
 
@@ -236,33 +300,18 @@ export const updateCompanyAdministrator = async (db, companyId, payload, actor) 
   return company;
 });
 
+export const resetCompanyUserPassword = async (db, companyId, userId, actor) => db.transaction(async transaction => {
+  const company = await requireCompany(transaction, companyId);
+  const user = await resetCompanyUserPasswordInTransaction(transaction, companyId, userId, actor);
+  return { company, user };
+});
+
 export const resetCompanyAdministratorPassword = async (db, companyId, actor) => db.transaction(async transaction => {
   const administrator = await requireCompanyAdministrator(transaction, companyId);
   preventPlatformAdministratorChange(administrator);
-  const temporaryPassword = generateTemporaryPassword();
-  const passwordHash = await hashPassword(temporaryPassword);
-  await transaction.query(
-    'UPDATE users SET password_hash = $2, force_password_change = true WHERE id = $1',
-    [administrator.administratorId, passwordHash]
-  );
-  await transaction.query('DELETE FROM sessions WHERE user_id = $1', [administrator.administratorId]);
   const company = await requireCompany(transaction, companyId);
-  await recordAudit(transaction, {
-    organizationId: companyId,
-    actorUserId: actor.id,
-    action: 'platform.administrator_temporary_password_reset',
-    entityType: 'user',
-    entityId: administrator.administratorId
-  });
-  return {
-    company,
-    administrator: {
-      id: administrator.administratorId,
-      name: administrator.administratorName,
-      email: administrator.administratorEmail,
-      temporaryPassword
-    }
-  };
+  const user = await resetCompanyUserPasswordInTransaction(transaction, companyId, administrator.administratorId, actor);
+  return { company, administrator: user };
 });
 
 export const deleteCompanyPermanently = async (db, companyId, confirmationName, actor) => db.transaction(async transaction => {

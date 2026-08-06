@@ -12,6 +12,7 @@
   const temporaryName = document.getElementById('temporaryAccessName');
   const temporaryEmail = document.getElementById('temporaryAccessEmail');
   const temporaryPassword = document.getElementById('temporaryAccessPassword');
+  const temporaryExpiration = document.getElementById('temporaryAccessExpiration');
   const copyPasswordButton = document.getElementById('copyTemporaryPassword');
   const administratorModal = document.getElementById('platformAdministratorModal');
   const administratorForm = document.getElementById('platformAdministratorForm');
@@ -26,9 +27,16 @@
   const supportModalStatus = document.getElementById('platformSupportModalStatus');
   const supportHistoryBody = document.getElementById('platformSupportHistoryBody');
   const closeSupportModalButton = document.getElementById('closePlatformSupportModal');
+  const usersModal = document.getElementById('platformUsersModal');
+  const usersModalCompany = document.getElementById('platformUsersModalCompany');
+  const usersModalStatus = document.getElementById('platformUsersModalStatus');
+  const usersBody = document.getElementById('platformUsersBody');
+  const closeUsersModalButton = document.getElementById('closePlatformUsersModal');
   let companies = [];
   let escalations = [];
   let editingCompanyId = null;
+  let managedCompanyId = null;
+  let managedUsers = [];
 
   const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
@@ -73,6 +81,9 @@
     temporaryName.textContent = administrator.name;
     temporaryEmail.textContent = administrator.email;
     temporaryPassword.value = administrator.temporaryPassword;
+    temporaryExpiration.textContent = administrator.temporaryPasswordExpiresAt
+      ? `Entregue esta senha ao cliente por um canal seguro. Ela expira em ${dateTimeLabel(administrator.temporaryPasswordExpiresAt)} e não poderá ser consultada novamente.`
+      : 'Entregue esta senha ao cliente por um canal seguro. Ela não poderá ser consultada novamente.';
     temporaryCard.hidden = false;
     temporaryCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
@@ -118,6 +129,53 @@
     } catch (error) {
       supportModalStatus.textContent = error.message || 'Não foi possível carregar o histórico de suporte.';
       supportHistoryBody.innerHTML = '<tr><td class="empty-table" colspan="4">Não foi possível carregar as conversas.</td></tr>';
+    }
+  };
+  const roleLabel = role => ({
+    owner: 'Proprietário', admin: 'Administrador', finance: 'Financeiro', inventory: 'Estoque', operator: 'Operacional'
+  })[role] || role;
+  const closeUsersModal = () => {
+    usersModal.hidden = true;
+    usersModalStatus.textContent = '';
+    usersModalStatus.classList.remove('error');
+    managedCompanyId = null;
+    managedUsers = [];
+  };
+  const renderUsers = () => {
+    usersBody.innerHTML = managedUsers.length ? managedUsers.map(user => {
+      const pendingPassword = user.passwordChangeRequired
+        ? `<small>Senha temporária até ${dateTimeLabel(user.temporaryPasswordExpiresAt)}</small>`
+        : '<small>Senha regular</small>';
+      const accountStatus = user.isActive ? pendingPassword : '<small>Conta inativa</small>';
+      const disabled = user.isPlatformAdministrator || !user.isActive ? 'disabled' : '';
+      const protectedNote = user.isPlatformAdministrator ? '<small>Conta da plataforma protegida</small>' : '';
+      return `
+        <tr>
+          <td><strong>${escapeHtml(user.name)}</strong><small>${escapeHtml(user.email)}</small></td>
+          <td>${escapeHtml(roleLabel(user.role))}</td>
+          <td>${accountStatus}${protectedNote}</td>
+          <td><button class="secondary-button" type="button" data-reset-company-user="${user.id}" ${disabled}>Gerar senha temporária</button></td>
+        </tr>`;
+    }).join('') : '<tr><td class="empty-table" colspan="4">Nenhum usuário encontrado nesta empresa.</td></tr>';
+  };
+  const openUsersModal = async company => {
+    managedCompanyId = company.id;
+    usersModalCompany.textContent = company.name;
+    usersModalStatus.textContent = 'Carregando usuários…';
+    usersModalStatus.classList.remove('error');
+    usersBody.innerHTML = '<tr><td class="empty-table" colspan="4">Carregando…</td></tr>';
+    usersModal.hidden = false;
+    try {
+      const result = await window.SevApi.getPlatformCompanyUsers(company.id);
+      if (managedCompanyId !== company.id) return;
+      usersModalCompany.textContent = result.company.name;
+      managedUsers = result.users;
+      usersModalStatus.textContent = `${managedUsers.length} usuário${managedUsers.length === 1 ? '' : 's'} cadastrado${managedUsers.length === 1 ? '' : 's'}.`;
+      usersModalStatus.classList.remove('error');
+      renderUsers();
+    } catch (error) {
+      usersModalStatus.textContent = error.message || 'Não foi possível carregar os usuários.';
+      usersBody.innerHTML = '<tr><td class="empty-table" colspan="4">Não foi possível carregar os usuários.</td></tr>';
     }
   };
   const renderEscalations = () => {
@@ -174,6 +232,7 @@
               <div class="platform-actions-popover" id="platform-actions-${company.id}" role="menu" data-platform-actions-popover hidden>
                 <button type="button" role="menuitem" data-edit-administrator="${company.id}" ${protectedAccount ? 'disabled' : ''}>Editar responsável</button>
                 <button type="button" role="menuitem" data-reset-password="${company.id}" ${protectedAccount ? 'disabled' : ''}>Gerar nova senha</button>
+                <button type="button" role="menuitem" data-manage-users="${company.id}">Gerenciar usuários</button>
                 <button type="button" role="menuitem" data-view-support-history="${company.id}">Ver conversas do suporte</button>
                 <div class="platform-actions-divider" role="separator"></div>
                 <button class="platform-delete-button" type="button" role="menuitem" data-delete-company="${company.id}" ${protectedAccount ? 'disabled' : ''}><span class="platform-menu-trash" aria-hidden="true">🗑</span>Excluir permanentemente</button>
@@ -229,7 +288,7 @@
   body.addEventListener('click', async event => {
     const button = event.target.closest('button');
     if (!button || button.disabled) return;
-    const id = button.dataset.toggleActionsMenu || button.dataset.savePlan || button.dataset.editAdministrator || button.dataset.resetPassword || button.dataset.toggleSuspension || button.dataset.deleteCompany || button.dataset.viewSupportHistory;
+    const id = button.dataset.toggleActionsMenu || button.dataset.savePlan || button.dataset.editAdministrator || button.dataset.resetPassword || button.dataset.manageUsers || button.dataset.toggleSuspension || button.dataset.deleteCompany || button.dataset.viewSupportHistory;
     if (!id) return;
     const company = findCompany(id);
     if (!company) return;
@@ -247,6 +306,11 @@
 
     if (button.dataset.viewSupportHistory) {
       openSupportHistory(company);
+      return;
+    }
+
+    if (button.dataset.manageUsers) {
+      openUsersModal(company);
       return;
     }
 
@@ -369,8 +433,39 @@
       window.alert('Copie a senha selecionada manualmente.');
     }
   });
+  usersBody.addEventListener('click', async event => {
+    const button = event.target.closest('[data-reset-company-user]');
+    const userId = button?.dataset.resetCompanyUser;
+    if (!userId || !managedCompanyId || button.disabled) return;
+    const user = managedUsers.find(item => item.id === userId);
+    if (!user) return;
+    if (!window.confirm(`Gerar uma nova senha temporária para ${user.name}? Todas as sessões dessa pessoa serão encerradas.`)) return;
+    button.disabled = true;
+    button.textContent = 'Gerando…';
+    usersModalStatus.textContent = '';
+    usersModalStatus.classList.remove('error');
+    try {
+      const result = await window.SevApi.resetPlatformCompanyUserPassword(managedCompanyId, userId);
+      managedUsers = managedUsers.map(item => item.id === userId ? {
+        ...item,
+        passwordChangeRequired: true,
+        temporaryPasswordExpiresAt: result.user.temporaryPasswordExpiresAt
+      } : item);
+      renderUsers();
+      showTemporaryAccess(result.user, 'Nova senha temporária gerada');
+      usersModalStatus.textContent = `Senha temporária gerada para ${result.user.name}.`;
+      usersModalStatus.classList.remove('error');
+    } catch (error) {
+      usersModalStatus.textContent = error.message || 'Não foi possível gerar a senha temporária.';
+      usersModalStatus.classList.add('error');
+      button.disabled = false;
+      button.textContent = 'Gerar senha temporária';
+    }
+  });
   closeAdministratorModalButton.addEventListener('click', closeAdministratorModal);
   administratorModal.addEventListener('click', event => { if (event.target === administratorModal) closeAdministratorModal(); });
+  closeUsersModalButton.addEventListener('click', closeUsersModal);
+  usersModal.addEventListener('click', event => { if (event.target === usersModal) closeUsersModal(); });
   closeSupportModalButton.addEventListener('click', closeSupportModal);
   supportModal.addEventListener('click', event => { if (event.target === supportModal) closeSupportModal(); });
   document.addEventListener('click', event => {
@@ -379,6 +474,7 @@
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape') {
       closeAdministratorModal();
+      closeUsersModal();
       closeSupportModal();
       closeActionMenus();
     }

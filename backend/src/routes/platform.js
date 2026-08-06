@@ -4,10 +4,12 @@ import {
   bootstrapPlatformAdministrator,
   createCompany,
   deleteCompanyPermanently,
+  listCompanyUsers,
   listCompanySupportConversations,
   listCompanies,
   listSupportEscalations,
   resetCompanyAdministratorPassword,
+  resetCompanyUserPassword,
   setCompanySuspension,
   updateCompanyAdministrator,
   updateCompanyPlan
@@ -29,6 +31,7 @@ const administratorSchema = z.object({
 });
 const deletionSchema = z.object({ confirmationName: z.string().trim().min(2).max(100) });
 const companyIdSchema = z.object({ id: z.string().uuid() });
+const companyUserSchema = z.object({ companyId: z.string().uuid(), userId: z.string().uuid() });
 const bootstrapSchema = z.object({ email: emailSchema, token: z.string().min(24).max(256) });
 
 export const registerPlatformRoutes = async app => {
@@ -49,6 +52,13 @@ export const registerPlatformRoutes = async app => {
   }, async request => {
     const { id } = validate(companyIdSchema, request.params);
     return listCompanySupportConversations(app.db, id);
+  });
+
+  app.get('/platform/companies/:id/users', {
+    preHandler: [requireAuth, requirePlatformAdmin]
+  }, async request => {
+    const { id } = validate(companyIdSchema, request.params);
+    return listCompanyUsers(app.db, id);
   });
 
   app.get('/platform/support/escalations', {
@@ -92,6 +102,13 @@ export const registerPlatformRoutes = async app => {
   }, async request => {
     const { id } = validate(companyIdSchema, request.params);
     return resetCompanyAdministratorPassword(app.db, id, request.auth);
+  });
+
+  app.post('/platform/companies/:companyId/users/:userId/temporary-password', {
+    preHandler: [requireAuth, requireCsrf, requirePlatformAdmin]
+  }, async request => {
+    const { companyId, userId } = validate(companyUserSchema, request.params);
+    return resetCompanyUserPassword(app.db, companyId, userId, request.auth);
   });
 
   app.delete('/platform/companies/:id', {

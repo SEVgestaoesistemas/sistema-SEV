@@ -58,32 +58,23 @@ test('login respeita o limite configurado por ambiente', async () => {
   await app.close();
 });
 
-test('recuperação de senha permite cinco solicitações por IP antes de limitar por quinze minutos', async () => {
-  const resetDatabase = {
-    ...database,
-    transaction: async callback => callback({
-      query: async () => ({ rows: [], rowCount: 0 })
-    })
-  };
+test('recuperação pública orienta o cliente ao fluxo manual e expõe somente o contato configurado', async () => {
   const app = await buildApp({
-    config,
-    db: resetDatabase,
-    emailSender: async () => {},
+    config: { ...config, adminWhatsAppNumber: '5581997498046' },
+    db: database,
     logger: false
   });
-  const request = () => app.inject({
+  const contact = await app.inject({ method: 'GET', url: '/api/v1/public/support-contact' });
+  assert.equal(contact.statusCode, 200);
+  assert.deepEqual(contact.json(), { whatsappNumber: '5581997498046' });
+
+  const reset = await app.inject({
     method: 'POST',
     url: '/api/v1/auth/password/reset',
     payload: { email: 'cliente@sev.test' }
   });
-
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    assert.equal((await request()).statusCode, 200);
-  }
-  const limited = await request();
-  assert.equal(limited.statusCode, 429);
-  assert.equal(limited.headers['x-ratelimit-limit'], '5');
-  assert.equal(limited.json().error.code, 'RATE_LIMITED');
+  assert.equal(reset.statusCode, 410);
+  assert.equal(reset.json().error.code, 'MANUAL_PASSWORD_RESET_REQUIRED');
   await app.close();
 });
 
@@ -99,18 +90,18 @@ test('cadastro público é rejeitado quando a plataforma está em modo por assin
   await app.close();
 });
 
-test('falhas de e-mail e do servidor retornam mensagens claras sem detalhes internos', async () => {
+test('falhas de recuperação manual e do servidor retornam mensagens claras sem detalhes internos', async () => {
   const app = await buildApp({ config, db: database, logger: false });
   app.get('/test/unexpected-error', async () => { throw new Error('database credential must not leak'); });
 
-  const emailUnavailable = await app.inject({
+  const manualReset = await app.inject({
     method: 'POST',
     url: '/api/v1/auth/password/reset',
     payload: { email: 'cliente@sev.test' }
   });
-  assert.equal(emailUnavailable.statusCode, 503);
-  assert.equal(emailUnavailable.json().error.code, 'EMAIL_DELIVERY_UNAVAILABLE');
-  assert.match(emailUnavailable.json().error.message, /recuperação de senha/);
+  assert.equal(manualReset.statusCode, 410);
+  assert.equal(manualReset.json().error.code, 'MANUAL_PASSWORD_RESET_REQUIRED');
+  assert.match(manualReset.json().error.message, /suporte/);
 
   const unexpected = await app.inject({ method: 'GET', url: '/test/unexpected-error' });
   assert.equal(unexpected.statusCode, 500);
@@ -124,6 +115,8 @@ test('ações de empresa exigem uma sessão de administrador da plataforma', asy
   const routes = [
     { method: 'PATCH', url: '/api/v1/platform/companies/00000000-0000-0000-0000-000000000000/suspension', payload: { suspended: true } },
     { method: 'POST', url: '/api/v1/platform/companies/00000000-0000-0000-0000-000000000000/temporary-password' },
+    { method: 'GET', url: '/api/v1/platform/companies/00000000-0000-0000-0000-000000000000/users' },
+    { method: 'POST', url: '/api/v1/platform/companies/00000000-0000-0000-0000-000000000000/users/00000000-0000-0000-0000-000000000001/temporary-password' },
     { method: 'DELETE', url: '/api/v1/platform/companies/00000000-0000-0000-0000-000000000000', payload: { confirmationName: 'Teste' } }
   ];
   for (const route of routes) {

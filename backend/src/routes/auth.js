@@ -153,7 +153,10 @@ export const registerAuthRoutes = async app => {
           ...passwordResetEmail({ name: resetRequest.name, url, expiresInMinutes: app.config.passwordResetTtlMinutes })
         });
       } catch (error) {
-        request.log.error({ err: error }, 'Não foi possível enviar o e-mail de recuperação de senha.');
+        request.log.error({
+          err: error,
+          smtp: error.smtpDiagnostic || { code: 'SMTP_SEND_FAILED' }
+        }, 'Não foi possível enviar o e-mail de recuperação de senha.');
       }
     }
     return { accepted: true };

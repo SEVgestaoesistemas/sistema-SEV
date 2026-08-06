@@ -53,13 +53,27 @@ test('e-mail de recuperação usa SMTP seguro e não permite conteúdo externo',
   assert.equal(sentMessage.headers['X-SEV-Message-Key'], 'password-reset-test');
 });
 
-test('falha de SMTP não expõe detalhes do provedor', async () => {
+test('falha de SMTP preserva diagnóstico seguro sem expor detalhes do provedor', async () => {
   const sender = createEmailSender(smtpConfig, {
-    createTransport: () => ({ sendMail: async () => { throw new Error('SMTP authentication failed'); } })
+    createTransport: () => ({
+      sendMail: async () => {
+        const error = new Error('535 5.7.8 Username and Password not accepted: app-password-not-real');
+        error.code = 'EAUTH';
+        error.command = 'AUTH PLAIN';
+        error.responseCode = 535;
+        throw error;
+      }
+    })
   });
 
   await assert.rejects(
     () => sender({ to: 'cliente@example.test', subject: 'x', text: 'x', html: '<p>x</p>', idempotencyKey: 'test' }),
-    error => error.code === 'EMAIL_DELIVERY_UNAVAILABLE' && error.statusCode === 503 && !/authentication failed/i.test(error.message)
+    error => error.code === 'EMAIL_DELIVERY_UNAVAILABLE'
+      && error.statusCode === 503
+      && !/app-password-not-real|Username and Password/i.test(error.message)
+      && Object.hasOwn(error, 'smtpDiagnostic')
+      && error.smtpDiagnostic.code === 'EAUTH'
+      && error.smtpDiagnostic.command === 'AUTH PLAIN'
+      && error.smtpDiagnostic.responseCode === 535
   );
 });

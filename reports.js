@@ -1,4 +1,4 @@
-/* Downloads organization-scoped CSV reports with an optional period filter. */
+/* Downloads organization-scoped native Excel reports with an optional period filter. */
 (() => {
   const form = document.getElementById('reportFilterForm');
   if (!form) return;
@@ -14,10 +14,10 @@
     receivables: 'Relatório de contas a receber'
   };
   const buttonLabels = {
-    sales: 'Baixar CSV de vendas',
-    stock: 'Baixar CSV de estoque',
-    expenses: 'Baixar CSV de despesas',
-    receivables: 'Baixar CSV de contas'
+    sales: 'Baixar Excel de vendas',
+    stock: 'Baixar Excel de estoque',
+    expenses: 'Baixar Excel de despesas',
+    receivables: 'Baixar Excel de contas'
   };
   const reportRoles = {
     sales: ['owner', 'admin', 'operator'],
@@ -53,7 +53,7 @@
       if (!validatePeriod()) return;
       const report = button.dataset.report;
       button.disabled = true;
-      button.textContent = 'Preparando CSV…';
+      button.textContent = 'Preparando Excel…';
       setStatus(`Preparando ${labels[report].toLowerCase()}…`);
       try {
         await window.SevApi.downloadReport(report, {

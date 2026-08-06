@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import ExcelJS from '@excel.js/exceljs';
 import { loadConfig } from '../../src/config.js';
 import { createDatabase } from '../../src/db/database.js';
 import { buildApp } from '../../src/app.js';
@@ -569,7 +570,7 @@ test('accounts receivable are created from pending sales and remain isolated by 
   }
 });
 
-test('CSV reports apply period filters and never export another organization data', { skip: !enabled }, async () => {
+test('XLSX reports apply period filters, formatting and organization isolation', { skip: !enabled }, async () => {
   const config = loadConfig();
   assert.ok(config.databaseUrl, 'DATABASE_URL is required for the reports isolation test.');
 
@@ -644,23 +645,50 @@ test('CSV reports apply period filters and never export another organization dat
     const headers = { cookie: `${sessionCookieName}=${fixture.sessionA.token}` };
     const query = '?startDate=2026-08-01&endDate=2026-08-31';
     const reports = [
-      ['sales', 'Cliente Relatório A', 'CLIENTE-SEGREDO-B'],
-      ['stock', "'=Produto Formula A", 'PRODUTO-SEGREDO-B'],
-      ['expenses', 'Fornecedor A', 'FORNECEDOR-SEGREDO-B'],
-      ['receivables', 'Cliente Relatório A', 'CLIENTE-SEGREDO-B']
+      ['sales', 'Cliente Relatório A', 'CLIENTE-SEGREDO-B', 'A5'],
+      ['stock', '=Produto Formula A', 'PRODUTO-SEGREDO-B', 'A5'],
+      ['expenses', 'Fornecedor A', 'FORNECEDOR-SEGREDO-B', 'A5'],
+      ['receivables', 'Cliente Relatório A', 'CLIENTE-SEGREDO-B', 'C5']
     ];
 
-    for (const [report, ownValue, foreignValue] of reports) {
-      const response = await app.inject({ method: 'GET', url: `/api/v1/reports/${report}.csv${query}`, headers });
+    for (const [report, ownValue, foreignValue, dateCellAddress] of reports) {
+      const response = await app.inject({ method: 'GET', url: `/api/v1/reports/${report}.xlsx${query}`, headers });
       assert.equal(response.statusCode, 200, `${report} report should be available`);
-      assert.match(response.headers['content-type'], /text\/csv/);
-      assert.ok(response.body.includes(ownValue), `${report} report should contain organization A data`);
-      assert.equal(response.body.includes(foreignValue), false, `${report} report must not contain organization B data`);
+      assert.match(response.headers['content-type'], /application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet/);
+      assert.match(response.headers['content-disposition'], /filename="sev-relatorio-.*\.xlsx"/);
+
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(response.rawPayload);
+      const worksheet = workbook.worksheets[0];
+      const cellValues = [];
+      worksheet.eachRow({ includeEmpty: true }, row => {
+        row.eachCell({ includeEmpty: true }, cell => cellValues.push(String(cell.value ?? '')));
+      });
+
+      assert.ok(cellValues.includes(ownValue), `${report} report should contain organization A data`);
+      assert.equal(cellValues.includes(foreignValue), false, `${report} report must not contain organization B data`);
+      assert.equal(worksheet.getCell('A4').font.bold, true);
+      assert.equal(worksheet.getCell('A4').fill.fgColor.argb, 'FF1F5E8C');
+      assert.ok(worksheet.getColumn(1).width >= 14);
+      assert.ok(worksheet.autoFilter);
+      assert.ok(worksheet.getCell(dateCellAddress).value instanceof Date, `${report} should contain native date cells`);
     }
+
+    const stockWorkbook = new ExcelJS.Workbook();
+    const stockResponse = await app.inject({ method: 'GET', url: `/api/v1/reports/stock.xlsx${query}`, headers });
+    await stockWorkbook.xlsx.load(stockResponse.rawPayload);
+    assert.equal(stockWorkbook.worksheets[0].getCell('B5').value, '=Produto Formula A');
+    assert.equal(stockWorkbook.worksheets[0].getCell('B5').type, ExcelJS.ValueType.String);
+
+    const salesWorkbook = new ExcelJS.Workbook();
+    const salesResponse = await app.inject({ method: 'GET', url: `/api/v1/reports/sales.xlsx${query}`, headers });
+    await salesWorkbook.xlsx.load(salesResponse.rawPayload);
+    assert.equal(salesWorkbook.worksheets[0].getCell('G5').value, 45);
+    assert.match(salesWorkbook.worksheets[0].getCell('G5').numFmt, /R\$/);
 
     const invalidPeriod = await app.inject({
       method: 'GET',
-      url: '/api/v1/reports/sales.csv?startDate=2026-08-31&endDate=2026-08-01',
+      url: '/api/v1/reports/sales.xlsx?startDate=2026-08-31&endDate=2026-08-01',
       headers
     });
     assert.equal(invalidPeriod.statusCode, 400);

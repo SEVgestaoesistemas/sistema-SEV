@@ -73,13 +73,13 @@
     return readResponse(response);
   };
 
-  const downloadCsv = async (path, fileName) => {
+  const downloadFile = async (path, fileName) => {
     let response;
     try {
       response = await fetch(`${API_BASE_URL}${path}`, {
         method: 'GET',
         credentials: 'include',
-        headers: { Accept: 'text/csv' }
+        headers: { Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
       });
     } catch {
       throw createApiError('Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.');
@@ -236,10 +236,17 @@
     getFinanceDashboard: async () => (await request('/finance/dashboard')).dashboard,
     getDashboardOverview: async () => (await request('/dashboard/overview')).dashboard,
     downloadReport: async (report, period) => {
+      const reportFileLabels = {
+        sales: 'vendas',
+        stock: 'estoque',
+        expenses: 'despesas',
+        receivables: 'contas-a-receber'
+      };
       const suffix = period?.startDate || period?.endDate
-        ? `-${period?.startDate || 'inicio'}-${period?.endDate || 'hoje'}`
-        : '';
-      return downloadCsv(`/reports/${encodeURIComponent(report)}.csv${queryString(period)}`, `sev-${report}${suffix}.csv`);
+        ? `-${period?.startDate || 'inicio'}-a-${period?.endDate || 'hoje'}`
+        : '-todos-os-periodos';
+      const fileLabel = reportFileLabels[report] || 'dados';
+      return downloadFile(`/reports/${encodeURIComponent(report)}.xlsx${queryString(period)}`, `sev-relatorio-${fileLabel}${suffix}.xlsx`);
     },
     getReceivables: async parameters => (await request(`/receivables${queryString(parameters)}`)).receivables,
     getReceivablesDashboard: async () => (await request('/receivables/dashboard')).dashboard,

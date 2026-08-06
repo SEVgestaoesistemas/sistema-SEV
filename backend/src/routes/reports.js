@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { AppError } from '../errors.js';
 import { recordAudit } from '../audit.js';
 import { requireAccountAccess, requireAuth } from '../auth/middleware.js';
+import { createXlsxReport } from '../reports/xlsx.js';
 import { dateSchema, validate } from './validation.js';
 
 const maximumReportRows = 10000;
@@ -22,7 +23,12 @@ const reportRoles = {
   expenses: ['owner', 'admin', 'finance'],
   receivables: ['owner', 'admin', 'finance']
 };
-
+const reportFileLabels = {
+  sales: 'vendas',
+  stock: 'estoque',
+  expenses: 'despesas',
+  receivables: 'contas-a-receber'
+};
 const paymentMethodLabels = {
   pix: 'Pix',
   card: 'Cartão',
@@ -37,16 +43,25 @@ const movementLabels = {
   exit: 'Saída',
   adjustment: 'Ajuste'
 };
-
-const csvCell = value => {
-  const raw = value === null || value === undefined ? '' : String(value);
-  const normalized = raw.replace(/[\r\n]+/g, ' ');
-  const formulaSafe = /^[=+\-@]/.test(normalized) ? `'${normalized}` : normalized;
-  return `"${formulaSafe.replace(/"/g, '""')}"`;
+const expenseStatusLabels = {
+  pending: 'Pendente',
+  paid: 'Paga',
+  overdue: 'Em atraso',
+  cancelled: 'Cancelada'
 };
 
-const toCsv = (header, rows) => `\uFEFF${[header, ...rows].map(row => row.map(csvCell).join(';')).join('\r\n')}\r\n`;
-const cents = value => (Number(value || 0) / 100).toFixed(2).replace('.', ',');
+const asCurrency = value => Number(value || 0) / 100;
+const asTimestamp = value => {
+  if (!value) return null;
+  const parsed = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+const asDateOnly = value => {
+  if (!value) return null;
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return asTimestamp(value);
+  return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12));
+};
 const dateRange = (column, period, values, { timestamp = false } = {}) => {
   const clauses = [];
   if (period.startDate) {
@@ -76,9 +91,9 @@ const assertReportSize = rows => {
 const loadSales = async (db, organizationId, period) => {
   const values = [organizationId];
   const result = await db.query(
-    `SELECT to_char(s.created_at AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') AS "orderDate",
-            s.order_number AS "orderNumber", customer.name AS "customerName", s.payment_method AS "paymentMethod",
-            s.payment_status AS "paymentStatus", to_char(s.due_date, 'DD/MM/YYYY') AS "dueDate", s.total_cents AS "totalCents"
+    `SELECT s.created_at AS "orderDate", s.order_number AS "orderNumber", customer.name AS "customerName",
+            s.payment_method AS "paymentMethod", s.payment_status AS "paymentStatus", s.due_date AS "dueDate",
+            s.total_cents AS "totalCents"
        FROM sales s
        JOIN customers customer ON customer.id = s.customer_id AND customer.organization_id = s.organization_id
       WHERE s.organization_id = $1${dateRange('s.created_at', period, values, { timestamp: true })}
@@ -88,15 +103,25 @@ const loadSales = async (db, organizationId, period) => {
   );
   assertReportSize(result.rows);
   return {
-    header: ['Data do pedido', 'Pedido', 'Cliente', 'Forma de pagamento', 'Situação', 'Vencimento', 'Total (R$)'],
+    title: 'Relatório de Vendas',
+    sheetName: 'Vendas',
+    columns: [
+      { header: 'Data do pedido', type: 'datetime', minWidth: 20 },
+      { header: 'Pedido', type: 'integer', minWidth: 12 },
+      { header: 'Cliente', type: 'text', minWidth: 20, maxWidth: 36, wrapText: true },
+      { header: 'Forma de pagamento', type: 'text', minWidth: 20 },
+      { header: 'Situação', type: 'text', minWidth: 14 },
+      { header: 'Vencimento', type: 'date', minWidth: 14 },
+      { header: 'Total', type: 'currency', minWidth: 16 }
+    ],
     rows: result.rows.map(row => [
-      row.orderDate,
-      `#${row.orderNumber}`,
+      asTimestamp(row.orderDate),
+      Number(row.orderNumber),
       row.customerName,
       paymentMethodLabels[row.paymentMethod] || row.paymentMethod,
       row.paymentStatus === 'paid' ? 'Recebido' : 'A prazo',
-      row.dueDate || '',
-      cents(row.totalCents)
+      asDateOnly(row.dueDate),
+      asCurrency(row.totalCents)
     ])
   };
 };
@@ -104,10 +129,9 @@ const loadSales = async (db, organizationId, period) => {
 const loadStock = async (db, organizationId, period) => {
   const values = [organizationId];
   const result = await db.query(
-    `SELECT to_char(movement.created_at AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') AS "movementDate",
-            product.name AS "productName", product.sku, movement.movement_type AS "movementType",
-            movement.quantity_delta AS "quantityDelta", product.quantity AS "currentQuantity",
-            product.minimum_quantity AS "minimumQuantity", movement.note
+    `SELECT movement.created_at AS "movementDate", product.name AS "productName", product.sku,
+            movement.movement_type AS "movementType", movement.quantity_delta AS "quantityDelta",
+            product.quantity AS "currentQuantity", product.minimum_quantity AS "minimumQuantity", movement.note
        FROM stock_movements movement
        JOIN products product ON product.id = movement.product_id AND product.organization_id = movement.organization_id
       WHERE movement.organization_id = $1${dateRange('movement.created_at', period, values, { timestamp: true })}
@@ -117,15 +141,26 @@ const loadStock = async (db, organizationId, period) => {
   );
   assertReportSize(result.rows);
   return {
-    header: ['Data', 'Produto', 'SKU', 'Movimentação', 'Variação', 'Estoque atual', 'Estoque mínimo', 'Observação'],
+    title: 'Relatório de Estoque',
+    sheetName: 'Estoque',
+    columns: [
+      { header: 'Data', type: 'datetime', minWidth: 20 },
+      { header: 'Produto', type: 'text', minWidth: 20, maxWidth: 36, wrapText: true },
+      { header: 'SKU', type: 'text', minWidth: 14 },
+      { header: 'Movimentação', type: 'text', minWidth: 16 },
+      { header: 'Variação', type: 'integer', minWidth: 12 },
+      { header: 'Estoque atual', type: 'integer', minWidth: 15 },
+      { header: 'Estoque mínimo', type: 'integer', minWidth: 16 },
+      { header: 'Observação', type: 'text', minWidth: 18, maxWidth: 46, wrapText: true }
+    ],
     rows: result.rows.map(row => [
-      row.movementDate,
+      asTimestamp(row.movementDate),
       row.productName,
       row.sku || '',
       movementLabels[row.movementType] || row.movementType,
-      row.quantityDelta,
-      row.currentQuantity,
-      row.minimumQuantity,
+      Number(row.quantityDelta),
+      Number(row.currentQuantity),
+      Number(row.minimumQuantity),
       row.note || ''
     ])
   };
@@ -134,9 +169,9 @@ const loadStock = async (db, organizationId, period) => {
 const loadExpenses = async (db, organizationId, period) => {
   const values = [organizationId];
   const result = await db.query(
-    `SELECT to_char(expense.due_date, 'DD/MM/YYYY') AS "dueDate", to_char(expense.issue_date, 'DD/MM/YYYY') AS "issueDate",
-            expense.supplier_name AS "supplierName", expense.document_number AS "documentNumber", expense.category,
-            expense.description, expense.amount_cents AS "amountCents", expense.status,
+    `SELECT expense.due_date AS "dueDate", expense.issue_date AS "issueDate", expense.supplier_name AS "supplierName",
+            expense.document_number AS "documentNumber", expense.category, expense.description,
+            expense.amount_cents AS "amountCents", expense.status,
             COALESCE((SELECT string_agg(item->>'description', ', ')
                         FROM jsonb_array_elements(expense.invoice_items) AS item), '') AS "invoiceItems"
        FROM expenses expense
@@ -147,16 +182,28 @@ const loadExpenses = async (db, organizationId, period) => {
   );
   assertReportSize(result.rows);
   return {
-    header: ['Vencimento', 'Emissão', 'Fornecedor', 'Nota fiscal', 'Categoria', 'Descrição', 'Valor (R$)', 'Status', 'Itens da NF-e'],
+    title: 'Relatório de Despesas',
+    sheetName: 'Despesas',
+    columns: [
+      { header: 'Vencimento', type: 'date', minWidth: 14 },
+      { header: 'Emissão', type: 'date', minWidth: 14 },
+      { header: 'Fornecedor', type: 'text', minWidth: 20, maxWidth: 36, wrapText: true },
+      { header: 'Nota fiscal', type: 'text', minWidth: 14 },
+      { header: 'Categoria', type: 'text', minWidth: 14 },
+      { header: 'Descrição', type: 'text', minWidth: 20, maxWidth: 46, wrapText: true },
+      { header: 'Valor', type: 'currency', minWidth: 16 },
+      { header: 'Status', type: 'text', minWidth: 14 },
+      { header: 'Itens da NF-e', type: 'text', minWidth: 20, maxWidth: 50, wrapText: true }
+    ],
     rows: result.rows.map(row => [
-      row.dueDate,
-      row.issueDate || '',
+      asDateOnly(row.dueDate),
+      asDateOnly(row.issueDate),
       row.supplierName,
       row.documentNumber || '',
       row.category,
       row.description,
-      cents(row.amountCents),
-      row.status,
+      asCurrency(row.amountCents),
+      expenseStatusLabels[row.status] || row.status,
       row.invoiceItems
     ])
   };
@@ -166,8 +213,7 @@ const loadReceivables = async (db, organizationId, period) => {
   const values = [organizationId];
   const result = await db.query(
     `SELECT customer.name AS "customerName", sale.order_number AS "orderNumber", receivable.amount_cents AS "amountCents",
-            to_char(receivable.due_date, 'DD/MM/YYYY') AS "dueDate", receivable.status,
-            to_char(receivable.paid_at AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') AS "paidAt",
+            receivable.due_date AS "dueDate", receivable.status, receivable.paid_at AS "paidAt",
             CASE
               WHEN receivable.status = 'paid' THEN 'Pago'
               WHEN receivable.due_date < (now() AT TIME ZONE 'America/Sao_Paulo')::date THEN 'Atrasado'
@@ -183,14 +229,23 @@ const loadReceivables = async (db, organizationId, period) => {
   );
   assertReportSize(result.rows);
   return {
-    header: ['Cliente', 'Pedido', 'Vencimento', 'Valor (R$)', 'Status', 'Recebido em'],
+    title: 'Relatório de Contas a Receber',
+    sheetName: 'Contas a Receber',
+    columns: [
+      { header: 'Cliente', type: 'text', minWidth: 20, maxWidth: 36, wrapText: true },
+      { header: 'Pedido', type: 'integer', minWidth: 12 },
+      { header: 'Vencimento', type: 'date', minWidth: 14 },
+      { header: 'Valor', type: 'currency', minWidth: 16 },
+      { header: 'Status', type: 'text', minWidth: 14 },
+      { header: 'Recebido em', type: 'datetime', minWidth: 20 }
+    ],
     rows: result.rows.map(row => [
       row.customerName,
-      `#${row.orderNumber}`,
-      row.dueDate,
-      cents(row.amountCents),
+      Number(row.orderNumber),
+      asDateOnly(row.dueDate),
+      asCurrency(row.amountCents),
       row.displayStatus,
-      row.paidAt || ''
+      asTimestamp(row.paidAt)
     ])
   };
 };
@@ -203,7 +258,7 @@ const loadReport = async (report, db, organizationId, period) => {
 };
 
 export const registerReportRoutes = async app => {
-  app.get('/reports/:report.csv', {
+  app.get('/reports/:report.xlsx', {
     preHandler: [requireAuth, requireAccountAccess]
   }, async (request, reply) => {
     const { report } = validate(reportParamsSchema, request.params);
@@ -212,22 +267,25 @@ export const registerReportRoutes = async app => {
       throw new AppError('Você não tem permissão para exportar este relatório.', { statusCode: 403, code: 'FORBIDDEN' });
     }
 
-    const csv = await request.tenantDb.transaction(async transaction => {
-      const data = await loadReport(report, transaction, request.auth.organization.id, period);
+    const data = await request.tenantDb.transaction(async transaction => {
+      const reportData = await loadReport(report, transaction, request.auth.organization.id, period);
       await recordAudit(transaction, {
         organizationId: request.auth.organization.id,
         actorUserId: request.auth.id,
         action: `reports.${report}_exported`,
         entityType: 'report',
-        metadata: { startDate: period.startDate || null, endDate: period.endDate || null, rowCount: data.rows.length }
+        metadata: { format: 'xlsx', startDate: period.startDate || null, endDate: period.endDate || null, rowCount: reportData.rows.length }
       });
-      return toCsv(data.header, data.rows);
+      return reportData;
     });
 
-    const suffix = period.startDate || period.endDate ? `-${period.startDate || 'inicio'}-${period.endDate || 'hoje'}` : '';
-    reply.header('Content-Type', 'text/csv; charset=utf-8');
-    reply.header('Content-Disposition', `attachment; filename="sev-${report}${suffix}.csv"`);
+    const suffix = period.startDate || period.endDate ? `-${period.startDate || 'inicio'}-a-${period.endDate || 'hoje'}` : '-todos-os-periodos';
+    const fileName = `sev-relatorio-${reportFileLabels[report]}${suffix}.xlsx`;
+    const xlsx = await createXlsxReport({ ...data, period });
+    reply.header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    reply.header('Content-Disposition', `attachment; filename="${fileName}"`);
+    reply.header('Content-Length', String(xlsx.length));
     reply.header('Cache-Control', 'no-store');
-    return csv;
+    return xlsx;
   });
 };

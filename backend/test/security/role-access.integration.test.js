@@ -117,7 +117,7 @@ test('papéis bloqueiam rotas restritas e nunca expõem valores financeiros masc
     const financeSaleWrite = await app.inject({ method: 'POST', url: '/api/v1/sales', headers: financeHeaders, payload: {} });
     assert.equal(financeSaleWrite.statusCode, 403);
 
-    const financeSalesReport = await app.inject({ method: 'GET', url: '/api/v1/reports/sales.csv', headers: financeHeaders });
+    const financeSalesReport = await app.inject({ method: 'GET', url: '/api/v1/reports/sales.xlsx', headers: financeHeaders });
     assert.equal(financeSalesReport.statusCode, 403);
 
     const inventorySales = await app.inject({ method: 'GET', url: '/api/v1/sales', headers: inventoryHeaders });

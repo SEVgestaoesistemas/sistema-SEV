@@ -16,7 +16,11 @@ const requiredTables = [
   'support_chat_usage',
   'notifications',
   'audit_logs',
-  'platform_administrators'
+  'platform_administrators',
+  'organization_api_keys',
+  'api_idempotency_keys',
+  'api_sync_logs',
+  'api_daily_usage'
 ];
 
 const config = loadConfig();

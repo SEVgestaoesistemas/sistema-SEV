@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { AppError } from '../errors.js';
 import { findSession, hashCsrfToken } from './service.js';
 import { sessionCookieName } from '../security/session.js';
+import { authenticateApiKey } from '../integrations/service.js';
 
 export const requireAuth = async request => {
   const session = await findSession(request.server.db, request.cookies[sessionCookieName]);
@@ -59,6 +60,25 @@ export const requirePlatformAdmin = async request => {
     throw new AppError('Este recurso é exclusivo da administração da plataforma.', {
       statusCode: 403,
       code: 'PLATFORM_ADMIN_REQUIRED'
+    });
+  }
+};
+
+export const requireApiKey = async request => {
+  const key = await authenticateApiKey(request.server.db, request.headers.authorization);
+  request.apiAuth = key;
+  request.tenantDb = request.server.db.forTenant({
+    organizationId: key.organizationId,
+    userId: null
+  });
+};
+
+export const requireApiScope = scope => async request => {
+  if (!request.apiAuth?.scopes?.includes(scope)) {
+    throw new AppError('Esta chave nao possui o escopo necessario para esta operacao.', {
+      statusCode: 403,
+      code: 'API_SCOPE_FORBIDDEN',
+      details: [{ path: 'scope', message: `Escopo necessario: ${scope}.` }]
     });
   }
 };

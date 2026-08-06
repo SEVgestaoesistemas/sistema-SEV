@@ -29,6 +29,11 @@ services:
         value: "5"
       - key: LOGIN_RATE_LIMIT_WINDOW
         value: "15 minutes"
+      # Limites da API de integraÃ§Ã£o por empresa (memÃ³ria por minuto e banco por dia).
+      - key: INTEGRATION_API_RATE_LIMIT_MAX
+        value: "30"
+      - key: INTEGRATION_API_DAILY_LIMIT
+        value: "2000"
       # Canal de recuperaÃ§Ã£o manual exibido na tela de login. Informe somente DDI + nÃºmero.
       - key: ADMIN_WHATSAPP_NUMBER
         sync: false

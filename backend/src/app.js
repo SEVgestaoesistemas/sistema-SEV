@@ -20,6 +20,7 @@ import { registerSalesRoutes } from './routes/sales.js';
 import { registerReceivableRoutes } from './routes/receivables.js';
 import { registerReportRoutes } from './routes/reports.js';
 import { registerSupportRoutes } from './routes/support.js';
+import { registerIntegrationRoutes } from './routes/integrations.js';
 import { createGeminiChat } from './support/gemini.js';
 
 export const buildApp = async (options = {}) => {
@@ -37,6 +38,7 @@ export const buildApp = async (options = {}) => {
   app.decorate('geminiChat', geminiChat);
   app.decorateRequest('auth', null);
   app.decorateRequest('tenantDb', null);
+  app.decorateRequest('apiAuth', null);
 
   if (config.environment === 'production' && config.loginRateLimitMax > 5) {
     app.log.warn(
@@ -55,8 +57,8 @@ export const buildApp = async (options = {}) => {
       return callback(new Error('Origem não permitida.'), false);
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'X-CSRF-Token']
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key', 'X-CSRF-Token']
   });
   await app.register(rateLimit, {
     global: true,
@@ -68,7 +70,13 @@ export const buildApp = async (options = {}) => {
 
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof AppError) {
-      return reply.code(error.statusCode).send({ error: { code: error.code, message: error.message } });
+      return reply.code(error.statusCode).send({
+        error: {
+          code: error.code,
+          message: error.message,
+          ...(error.details ? { details: error.details } : {})
+        }
+      });
     }
     if (error.code === 'FST_ERR_RATE_LIMIT' || error.statusCode === 429) {
       return reply.code(429).send({
@@ -117,6 +125,7 @@ export const buildApp = async (options = {}) => {
   await app.register(registerReceivableRoutes, { prefix: '/api/v1' });
   await app.register(registerReportRoutes, { prefix: '/api/v1' });
   await app.register(registerSupportRoutes, { prefix: '/api/v1' });
+  await app.register(registerIntegrationRoutes, { prefix: '/api/v1/integrations' });
   await app.register(registerPlatformRoutes, { prefix: '/api/v1' });
 
   app.setNotFoundHandler((request, reply) => reply.code(404).send({

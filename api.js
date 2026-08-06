@@ -251,6 +251,17 @@
       body: settings,
       csrf: true
     })).settings,
+    getIntegrationApiKeys: async () => (await request('/integrations/keys')).keys,
+    createIntegrationApiKey: async key => request('/integrations/keys', {
+      method: 'POST',
+      body: key,
+      csrf: true
+    }),
+    revokeIntegrationApiKey: async id => (await request(`/integrations/keys/${encodeURIComponent(id)}/revoke`, {
+      method: 'POST',
+      csrf: true
+    })).key,
+    getIntegrationSyncLogs: async parameters => (await request(`/integrations/logs${queryString(parameters)}`)).logs,
     getTeam: async () => (await request('/team')).members,
     createTeamInvitation: async invitation => (await request('/team/invitations', {
       method: 'POST',

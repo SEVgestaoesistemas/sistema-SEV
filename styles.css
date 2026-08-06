@@ -971,6 +971,32 @@ tbody tr:hover{ background: var(--surface-soft); }
 .settings-actions{ display:flex; align-items:center; justify-content:flex-end; gap:16px; }
 .settings-status{ margin:0 auto 0 0; color:var(--success); font-size:13px; }
 .settings-status.error{ color:var(--danger); }
+.integration-panel{ display:flex; flex-direction:column; gap:16px; margin-top:16px; }
+.integration-panel[hidden]{ display:none; }
+.integration-panel .settings-panel-head{ margin-bottom:0; }
+.integration-key-form{ display:grid; grid-template-columns:minmax(180px, .9fr) minmax(300px, 1.4fr) auto; gap:14px; align-items:end; }
+.integration-key-form .primary-button{ white-space:nowrap; }
+.integration-scopes{ display:flex; flex-wrap:wrap; gap:8px 14px; min-width:0; margin:0; padding:0; border:0; color:var(--ink-soft); font-size:12px; }
+.integration-scopes legend{ width:100%; margin-bottom:4px; color:var(--ink-soft); font-size:12.5px; font-weight:600; }
+.integration-scopes label{ display:flex; align-items:center; gap:5px; cursor:pointer; }
+.integration-scopes input{ accent-color:var(--brand); }
+.integration-secret-card{ display:flex; flex-wrap:wrap; align-items:end; gap:10px 14px; padding:15px; border:1px solid var(--brand); border-radius:var(--radius-md); background:var(--brand-tint); }
+.integration-secret-card[hidden]{ display:none; }
+.integration-secret-card strong{ width:100%; color:var(--brand-ink); font-size:13px; }
+.integration-secret-card p{ width:100%; margin:0; color:var(--ink-soft); font-size:12px; }
+.integration-secret-card .field{ flex:1 1 300px; }
+.integration-secret-card input{ font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; }
+.integration-list-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:4px; }
+.integration-list-head h3{ margin:0; color:var(--ink); font-family:var(--font-display); font-size:14px; }
+.integration-list-head p{ margin:3px 0 0; color:var(--ink-faint); font-size:12px; }
+.integration-logs-head{ margin-top:10px; }
+.integration-table td{ vertical-align:middle; }
+.integration-table code{ font-size:11px; color:var(--ink-soft); }
+.integration-scope{ display:inline-block; margin:2px 3px 2px 0; padding:3px 6px; border-radius:999px; background:var(--surface-soft); color:var(--ink-soft); font-size:10px; white-space:nowrap; }
+.integration-state{ display:inline-block; padding:3px 7px; border-radius:999px; background:var(--brand-tint); color:var(--brand-ink); font-size:10px; font-weight:700; text-transform:capitalize; }
+.integration-state.revoked,.integration-state.error{ background:var(--danger-tint); color:var(--danger); }
+.integration-state.replayed{ background:var(--warning-tint); color:#9a6500; }
+.integration-revoke{ color:var(--danger); }
 .primary-button{
   min-height:42px; padding:0 17px; border:0; border-radius:var(--radius-sm);
   background:var(--brand); color:#fff; font:inherit; font-size:13px; font-weight:700; cursor:pointer;

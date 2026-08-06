@@ -18,6 +18,8 @@ const environmentSchema = z.object({
     /^\d+\s*(second|seconds|minute|minutes|hour|hours)$/i,
     'LOGIN_RATE_LIMIT_WINDOW deve usar um valor como "15 minutes".'
   ).default('15 minutes'),
+  INTEGRATION_API_RATE_LIMIT_MAX: z.coerce.number().int().min(1).max(1000).default(30),
+  INTEGRATION_API_DAILY_LIMIT: z.coerce.number().int().min(1).max(1000000).default(2000),
   ADMIN_WHATSAPP_NUMBER: z.preprocess(
     value => typeof value === 'string' && !value.trim() ? undefined : value,
     z.string().trim().regex(/^\d{10,15}$/, 'ADMIN_WHATSAPP_NUMBER deve conter somente DDI e nÃºmero.').optional()
@@ -59,6 +61,8 @@ export const loadConfig = (environment = process.env) => {
     sessionSameSite: values.SESSION_SAME_SITE,
     loginRateLimitMax: values.LOGIN_RATE_LIMIT_MAX,
     loginRateLimitWindow: values.LOGIN_RATE_LIMIT_WINDOW,
+    integrationApiRateLimitMax: values.INTEGRATION_API_RATE_LIMIT_MAX,
+    integrationApiDailyLimit: values.INTEGRATION_API_DAILY_LIMIT,
     adminWhatsAppNumber: values.ADMIN_WHATSAPP_NUMBER,
     geminiApiKey: values.GEMINI_API_KEY,
     geminiModel: values.GEMINI_MODEL,

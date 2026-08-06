@@ -8,7 +8,7 @@
     "dev": "node --watch --env-file=.env src/server.js",
     "start": "node src/server.js",
     "test": "node --test",
-    "test:tenant-isolation": "node --env-file=.env --test test/security/tenant-isolation.integration.test.js test/security/support-chat.integration.test.js test/security/team-settings.integration.test.js test/security/role-access.integration.test.js test/security/password-reset.integration.test.js",
+    "test:tenant-isolation": "node --env-file=.env --test test/security/tenant-isolation.integration.test.js test/security/support-chat.integration.test.js test/security/team-settings.integration.test.js test/security/role-access.integration.test.js test/security/password-reset.integration.test.js test/security/api-integrations.integration.test.js",
     "db:migrate": "node --env-file=.env src/db/migrate.js",
     "db:verify": "node --env-file=.env src/db/verify.js",
     "db:smoke": "node --env-file=.env scripts/smoke.js"

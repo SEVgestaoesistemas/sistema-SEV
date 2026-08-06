@@ -12,7 +12,7 @@ const configureTenantTransaction = async (transaction, { organizationId, userId 
   await transaction.query(
     `SELECT set_config('app.organization_id', $1, true),
             set_config('app.user_id', $2, true)`,
-    [organizationId, userId]
+    [organizationId, userId || '']
   );
 };
 

@@ -205,7 +205,21 @@
             <label class="setting-toggle"><input name="criticalStockAlerts" type="checkbox"><span class="toggle-control" aria-hidden="true"></span><span><strong>Alertas de estoque crítico</strong><small>Avise quando um produto atingir estoque baixo ou ficar esgotado.</small></span></label>
           </section>
           <div class="settings-actions"><p class="settings-status" id="settingsStatus" role="status" aria-live="polite"></p><button class="primary-button" type="submit">Salvar alterações</button></div>
-        </form>`
+        </form>
+        <section class="settings-panel integration-panel" id="integrationPanel" aria-labelledby="integrationTitle">
+          <div class="settings-panel-head"><div><h2 id="integrationTitle">Integrações API</h2><p>Crie uma chave exclusiva para conectar seu sistema ao estoque e às vendas da empresa.</p></div></div>
+          <form class="integration-key-form" id="integrationKeyForm">
+            <label class="field"><span>Nome da chave</span><input name="name" type="text" minlength="2" maxlength="80" placeholder="Ex.: ERP da loja" required></label>
+            <fieldset class="integration-scopes"><legend>Permissões</legend><label><input name="scope" type="checkbox" value="inventory:write" checked> Estoque: criar produtos e movimentar estoque</label><label><input name="scope" type="checkbox" value="sales:write" checked> Vendas: registrar vendas pagas</label><label><input name="scope" type="checkbox" value="sync-logs:read"> Consultar logs de sincronização</label></fieldset>
+            <button class="primary-button" id="createIntegrationKey" type="submit">Gerar chave</button>
+          </form>
+          <p class="settings-status" id="integrationStatus" role="status" aria-live="polite"></p>
+          <aside class="integration-secret-card" id="integrationSecretCard" hidden aria-live="polite"><strong>Copie agora sua chave de API</strong><p>Por segurança, ela não poderá ser exibida novamente.</p><label class="field"><span>Chave</span><input id="integrationSecretValue" type="text" readonly></label><button class="secondary-button" id="copyIntegrationSecret" type="button">Copiar chave</button></aside>
+          <div class="integration-list-head"><h3>Chaves cadastradas</h3><button class="secondary-button" id="refreshIntegrationData" type="button">Atualizar</button></div>
+          <div class="table-wrap"><table class="integration-table"><thead><tr><th>Nome</th><th>Prefixo</th><th>Escopos</th><th>Último uso</th><th>Status</th><th></th></tr></thead><tbody id="integrationKeysBody"></tbody></table></div>
+          <div class="integration-list-head integration-logs-head"><div><h3>Histórico de sincronização</h3><p>Últimas requisições processadas para esta empresa.</p></div></div>
+          <div class="table-wrap"><table class="integration-table"><thead><tr><th>Data</th><th>Evento</th><th>Identificador externo</th><th>Resultado</th><th>Detalhe</th></tr></thead><tbody id="integrationLogsBody"></tbody></table></div>
+        </section>`
     },
     plataforma: {
       title: 'Administração da plataforma',
@@ -366,6 +380,124 @@
       }
     };
 
+    const integrationPanel = document.getElementById('integrationPanel');
+    const integrationKeyForm = document.getElementById('integrationKeyForm');
+    const integrationStatus = document.getElementById('integrationStatus');
+    const integrationKeysBody = document.getElementById('integrationKeysBody');
+    const integrationLogsBody = document.getElementById('integrationLogsBody');
+    const integrationSecretCard = document.getElementById('integrationSecretCard');
+    const integrationSecretValue = document.getElementById('integrationSecretValue');
+    const integrationCreateButton = document.getElementById('createIntegrationKey');
+    const escapeIntegrationHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    })[character]);
+    const formatIntegrationDate = value => value ? new Intl.DateTimeFormat('pt-BR', {
+      dateStyle: 'short', timeStyle: 'short'
+    }).format(new Date(value)) : 'Nunca';
+    const setIntegrationStatus = (message, isError = false) => {
+      integrationStatus.textContent = message;
+      integrationStatus.classList.toggle('error', isError);
+    };
+    const renderIntegrationKeys = keys => {
+      if (!keys.length) {
+        integrationKeysBody.innerHTML = '<tr><td class="empty-table" colspan="6">Nenhuma chave criada ainda.</td></tr>';
+        return;
+      }
+      integrationKeysBody.innerHTML = keys.map(key => `<tr>
+        <td><strong>${escapeIntegrationHtml(key.name)}</strong></td>
+        <td><code>${escapeIntegrationHtml(key.keyPrefix)}…</code></td>
+        <td>${key.scopes.map(scope => `<span class="integration-scope">${escapeIntegrationHtml(scope)}</span>`).join(' ')}</td>
+        <td>${formatIntegrationDate(key.lastUsedAt)}</td>
+        <td><span class="integration-state ${key.revokedAt ? 'revoked' : 'active'}">${key.revokedAt ? 'Revogada' : 'Ativa'}</span></td>
+        <td>${key.revokedAt ? '' : `<button class="text-button integration-revoke" type="button" data-revoke-key="${escapeIntegrationHtml(key.id)}">Revogar</button>`}</td>
+      </tr>`).join('');
+    };
+    const renderIntegrationLogs = logs => {
+      if (!logs.length) {
+        integrationLogsBody.innerHTML = '<tr><td class="empty-table" colspan="5">Ainda não há sincronizações registradas.</td></tr>';
+        return;
+      }
+      integrationLogsBody.innerHTML = logs.map(log => `<tr>
+        <td>${formatIntegrationDate(log.createdAt)}</td>
+        <td>${escapeIntegrationHtml(log.eventType)}</td>
+        <td><code>${escapeIntegrationHtml(log.externalId || '—')}</code></td>
+        <td><span class="integration-state ${escapeIntegrationHtml(log.status)}">${escapeIntegrationHtml(log.status)}</span></td>
+        <td>${log.errorCode ? escapeIntegrationHtml(log.errorCode) : `${escapeIntegrationHtml(log.httpStatus)} · ${escapeIntegrationHtml(log.durationMs ?? 0)} ms`}</td>
+      </tr>`).join('');
+    };
+    const loadIntegrationData = async () => {
+      const user = await window.SevAuth.ready;
+      if (!user || !['owner', 'admin'].includes(user.organization.role)) {
+        integrationPanel.hidden = true;
+        return;
+      }
+      integrationPanel.hidden = false;
+      setIntegrationStatus('Carregando chaves e histórico…');
+      try {
+        const [keys, logs] = await Promise.all([
+          window.SevApi.getIntegrationApiKeys(),
+          window.SevApi.getIntegrationSyncLogs({ limit: 30 })
+        ]);
+        renderIntegrationKeys(keys);
+        renderIntegrationLogs(logs);
+        setIntegrationStatus('');
+      } catch (error) {
+        setIntegrationStatus(error.message || 'Não foi possível carregar as integrações.', true);
+      }
+    };
+    integrationKeyForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!integrationKeyForm.reportValidity()) return;
+      const scopes = [...integrationKeyForm.querySelectorAll('input[name="scope"]:checked')].map(input => input.value);
+      if (!scopes.length) {
+        setIntegrationStatus('Selecione pelo menos uma permissão para a chave.', true);
+        return;
+      }
+      integrationCreateButton.disabled = true;
+      integrationCreateButton.textContent = 'Gerando…';
+      setIntegrationStatus('');
+      try {
+        const created = await window.SevApi.createIntegrationApiKey({
+          name: integrationKeyForm.elements.name.value.trim(),
+          scopes
+        });
+        integrationSecretValue.value = created.apiKey;
+        integrationSecretCard.hidden = false;
+        integrationKeyForm.reset();
+        setIntegrationStatus('Chave criada. Copie-a agora e armazene-a em local seguro.');
+        await loadIntegrationData();
+      } catch (error) {
+        setIntegrationStatus(error.message || 'Não foi possível criar a chave.', true);
+      } finally {
+        integrationCreateButton.disabled = false;
+        integrationCreateButton.textContent = 'Gerar chave';
+      }
+    });
+    document.getElementById('copyIntegrationSecret').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(integrationSecretValue.value);
+        setIntegrationStatus('Chave copiada para a área de transferência.');
+      } catch {
+        integrationSecretValue.select();
+        setIntegrationStatus('Selecione e copie a chave manualmente.', true);
+      }
+    });
+    integrationKeysBody.addEventListener('click', async event => {
+      const button = event.target.closest('[data-revoke-key]');
+      if (!button || !window.confirm('Revogar esta chave? Sistemas que usam esta chave perderão acesso imediatamente.')) return;
+      button.disabled = true;
+      setIntegrationStatus('Revogando chave…');
+      try {
+        await window.SevApi.revokeIntegrationApiKey(button.dataset.revokeKey);
+        setIntegrationStatus('Chave revogada.');
+        await loadIntegrationData();
+      } catch (error) {
+        setIntegrationStatus(error.message || 'Não foi possível revogar a chave.', true);
+        button.disabled = false;
+      }
+    });
+    document.getElementById('refreshIntegrationData').addEventListener('click', () => loadIntegrationData());
+
     settingsForm.addEventListener('submit', async event => {
       event.preventDefault();
       if (!settingsForm.reportValidity()) return;
@@ -390,6 +522,7 @@
       }
     });
     loadSettings();
+    loadIntegrationData();
   }
 
   if (pageId === 'estoque') {

@@ -100,7 +100,7 @@
             <ul class="notification-list" id="notificationList"></ul>
           </section>
         </div>
-        <button class="icon-btn" type="button" aria-label="Ajuda">
+        <button class="icon-btn" id="dashboardHelpButton" type="button" aria-label="Abrir suporte">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.5 2.5 0 0 1 4.8 1c0 1.6-2.3 1.8-2.3 3.3"/><circle cx="12" cy="17" r="0.6" fill="currentColor"/></svg>
         </button>
         <button class="avatar profile-trigger" type="button" data-profile-trigger aria-label="Abrir menu do perfil" data-profile-avatar>JM</button>
@@ -239,11 +239,11 @@
           <div class="panel-head">
             <div>
               <div class="panel-title">Produtos em estoque</div>
-              <div class="panel-sub">Atualizado hoje às 09:40</div>
+              <div class="panel-sub" id="dashboardStockUpdatedAt">Carregando dados do estoque…</div>
             </div>
-            <div class="tabs">
-              <div class="tab active">Todos</div>
-              <div class="tab">Críticos</div>
+            <div class="tabs" aria-label="Filtros de estoque do painel">
+              <button class="tab active" type="button" data-dashboard-stock-filter="all" aria-pressed="true">Todos</button>
+              <button class="tab" type="button" data-dashboard-stock-filter="critical" aria-pressed="false">Críticos</button>
             </div>
           </div>
           <div class="table-wrap">

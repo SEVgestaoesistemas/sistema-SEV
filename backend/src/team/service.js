@@ -59,13 +59,13 @@ export const updateMemberRole = async (db, userId, role, actor) => db.transactio
   );
   const current = member.rows[0];
   if (!current) {
-    throw new AppError('Integrante nÃ£o encontrado nesta empresa.', { statusCode: 404, code: 'MEMBER_NOT_FOUND' });
+    throw new AppError('Integrante não encontrado nesta empresa.', { statusCode: 404, code: 'MEMBER_NOT_FOUND' });
   }
   if (current.role === 'owner') {
-    throw new AppError('A funÃ§Ã£o do proprietÃ¡rio nÃ£o pode ser alterada por esta tela.', { statusCode: 403, code: 'OWNER_ROLE_PROTECTED' });
+    throw new AppError('A função do proprietário não pode ser alterada por esta tela.', { statusCode: 403, code: 'OWNER_ROLE_PROTECTED' });
   }
   if (actor.organization.role === 'admin' && (current.role === 'admin' || role === 'admin')) {
-    throw new AppError('Somente o proprietÃ¡rio pode alterar permissÃµes de administrador.', { statusCode: 403, code: 'FORBIDDEN' });
+    throw new AppError('Somente o proprietário pode alterar permissões de administrador.', { statusCode: 403, code: 'FORBIDDEN' });
   }
 
   const result = await transaction.query(

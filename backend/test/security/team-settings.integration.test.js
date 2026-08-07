@@ -118,10 +118,43 @@ test('equipe e configurações permanecem isoladas por organização', { skip: !
     assert.equal(savedSettings.json().settings.companyName, 'Company A Updated');
     assert.equal(savedSettings.json().settings.criticalStockAlerts, false);
 
+    const productWithoutAlert = await app.inject({
+      method: 'POST', url: '/api/v1/products', headers: headersA,
+      payload: { name: 'Produto silencioso', quantity: 1, minimumQuantity: 1, unitPriceCents: 1000 }
+    });
+    assert.equal(productWithoutAlert.statusCode, 201);
+    const suppressedAlerts = await database.query(
+      "SELECT COUNT(*)::int AS count FROM notifications WHERE organization_id = $1 AND category = 'stock'",
+      [fixture.organizationA]
+    );
+    assert.equal(suppressedAlerts.rows[0].count, 0, 'a preferência desativada não deve criar alerta de estoque');
+
+    const alertsEnabled = await app.inject({
+      method: 'PATCH', url: '/api/v1/settings', headers: headersA,
+      payload: { criticalStockAlerts: true }
+    });
+    assert.equal(alertsEnabled.statusCode, 200);
+    const productWithAlert = await app.inject({
+      method: 'POST', url: '/api/v1/products', headers: headersA,
+      payload: { name: 'Produto com alerta', quantity: 1, minimumQuantity: 1, unitPriceCents: 1000 }
+    });
+    assert.equal(productWithAlert.statusCode, 201);
+    const createdAlerts = await database.query(
+      "SELECT COUNT(*)::int AS count FROM notifications WHERE organization_id = $1 AND category = 'stock'",
+      [fixture.organizationA]
+    );
+    assert.equal(createdAlerts.rows[0].count, 1, 'a preferência ativada deve criar alerta de estoque');
+
     const settingsB = await app.inject({ method: 'GET', url: '/api/v1/settings', headers: headersB });
     assert.equal(settingsB.statusCode, 200);
     assert.notEqual(settingsB.json().settings.companyName, 'Company A Updated');
     assert.equal(settingsB.json().settings.criticalStockAlerts, true);
+
+    await database.query('UPDATE organizations SET is_suspended = true WHERE id = $1', [fixture.organizationA]);
+    const suspendedSession = await app.inject({ method: 'GET', url: '/api/v1/auth/me', headers: headersA });
+    assert.equal(suspendedSession.statusCode, 200);
+    assert.equal(suspendedSession.json().user.companySuspended, true);
+    await database.query('UPDATE organizations SET is_suspended = false WHERE id = $1', [fixture.organizationA]);
 
     const tenantB = database.forTenant({ organizationId: fixture.organizationB, userId: fixture.userIds[2] });
     const hiddenInvitation = await tenantB.query('SELECT id FROM team_invitations WHERE organization_id = $1', [fixture.organizationA]);

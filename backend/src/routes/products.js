@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { recordAudit } from '../audit.js';
 import { requireAccountAccess, requireAuth, requireCsrf, requireRoles } from '../auth/middleware.js';
+import { createCriticalStockAlert } from '../stock-alerts.js';
 import { validate } from './validation.js';
 
 const productSchema = z.object({
@@ -62,15 +63,11 @@ export const registerProductRoutes = async app => {
         );
       }
       if (created.quantity <= created.minimumQuantity) {
-        await transaction.query(
-          `INSERT INTO notifications (organization_id, category, title, message)
-           VALUES ($1, 'stock', $2, $3)`,
-          [
-            request.auth.organization.id,
-            'Alerta de estoque crítico',
-            `${created.name} está com ${created.quantity} unidade(s) em estoque.`
-          ]
-        );
+        await createCriticalStockAlert(transaction, {
+          organizationId: request.auth.organization.id,
+          title: 'Alerta de estoque crítico',
+          message: `${created.name} está com ${created.quantity} unidade(s) em estoque.`
+        });
       }
       await recordAudit(transaction, {
         organizationId: request.auth.organization.id,

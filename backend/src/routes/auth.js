@@ -87,9 +87,10 @@ export const registerAuthRoutes = async app => {
       id: request.auth.id,
       name: request.auth.name,
       email: request.auth.email,
-      organization: request.auth.organization
-      , passwordChangeRequired: request.auth.passwordChangeRequired,
+      organization: request.auth.organization,
+      passwordChangeRequired: request.auth.passwordChangeRequired,
       planExpired: request.auth.planExpired,
+      companySuspended: request.auth.companySuspended,
       isPlatformAdmin: request.auth.isPlatformAdmin
     }
   }));

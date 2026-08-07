@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { loadConfig } from '../src/config.js';
 import { generateApiKey, hashApiKey, hashPayload, stableStringify } from '../src/integrations/service.js';
 
-test('integraÃ§Ãµes usam limites seguros por empresa e aceitam configuraÃ§Ã£o por ambiente', () => {
+test('integrações usam limites seguros por empresa e aceitam configuração por ambiente', () => {
   const defaults = loadConfig({ NODE_ENV: 'test' });
   assert.equal(defaults.integrationApiRateLimitMax, 30);
   assert.equal(defaults.integrationApiDailyLimit, 2000);
@@ -17,7 +17,7 @@ test('integraÃ§Ãµes usam limites seguros por empresa e aceitam configuraÃ§
   assert.equal(configured.integrationApiDailyLimit, 3500);
 });
 
-test('chaves de integraÃ§Ã£o sÃ£o aleatÃ³rias e somente o hash Ã© persistÃ­vel', () => {
+test('chaves de integração são aleatórias e somente o hash é persistível', () => {
   const first = generateApiKey();
   const second = generateApiKey();
 
@@ -28,7 +28,7 @@ test('chaves de integraÃ§Ã£o sÃ£o aleatÃ³rias e somente o hash Ã© pers
   assert.equal(first.prefix, first.secret.slice(0, 17));
 });
 
-test('hash de payload Ã© estÃ¡vel mesmo quando as propriedades chegam em outra ordem', () => {
+test('hash de payload é estável mesmo quando as propriedades chegam em outra ordem', () => {
   const first = { customer: { id: 'c-1', name: 'Cliente' }, items: [{ id: 'p-1', quantity: 2 }] };
   const second = { items: [{ quantity: 2, id: 'p-1' }], customer: { name: 'Cliente', id: 'c-1' } };
 

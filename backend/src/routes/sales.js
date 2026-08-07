@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { AppError } from '../errors.js';
 import { recordAudit } from '../audit.js';
 import { requireAccountAccess, requireAuth, requireCsrf, requireRoles } from '../auth/middleware.js';
+import { createCriticalStockAlert } from '../stock-alerts.js';
 import { dateSchema, emailSchema, validate } from './validation.js';
 
 const commercialReadRoles = ['owner', 'admin', 'operator', 'finance', 'inventory'];
@@ -407,15 +408,11 @@ export const registerSalesRoutes = async app => {
         );
         const remainingQuantity = product.quantity - item.quantity;
         if (remainingQuantity <= product.minimumQuantity) {
-          await transaction.query(
-            `INSERT INTO notifications (organization_id, category, title, message)
-             VALUES ($1, 'stock', $2, $3)`,
-            [
-              request.auth.organization.id,
-              'Alerta de estoque crítico',
-              `${product.name} está com ${remainingQuantity} unidade(s) após o pedido #${created.orderNumber}.`
-            ]
-          );
+          await createCriticalStockAlert(transaction, {
+            organizationId: request.auth.organization.id,
+            title: 'Alerta de estoque crítico',
+            message: `${product.name} está com ${remainingQuantity} unidade(s) após o pedido #${created.orderNumber}.`
+          });
         }
         items.push({
           ...itemResult.rows[0],

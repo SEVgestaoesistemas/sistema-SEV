@@ -33,7 +33,7 @@ test('recuperação manual de senha expõe somente o contato configurado', () =>
 
 test('chat de suporte possui limites diários seguros e configuráveis', () => {
   const defaults = loadConfig({ NODE_ENV: 'test' });
-  assert.equal(defaults.geminiModel, 'gemini-2.5-flash-lite');
+  assert.equal(defaults.geminiModel, 'gemini-3.1-flash-lite');
   assert.equal(defaults.supportChatUserDailyLimit, 15);
   assert.equal(defaults.supportChatOrganizationDailyLimit, 60);
 

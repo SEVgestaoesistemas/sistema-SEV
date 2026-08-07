@@ -38,10 +38,10 @@ const environmentSchema = z.object({
   INTEGRATION_API_DAILY_LIMIT: z.coerce.number().int().min(1).max(1000000).default(2000),
   ADMIN_WHATSAPP_NUMBER: z.preprocess(
     value => typeof value === 'string' && !value.trim() ? undefined : value,
-    z.string().trim().regex(/^\d{10,15}$/, 'ADMIN_WHATSAPP_NUMBER deve conter somente DDI e nÃºmero.').optional()
+    z.string().trim().regex(/^\d{10,15}$/, 'ADMIN_WHATSAPP_NUMBER deve conter somente DDI e número.').optional()
   ),
   GEMINI_API_KEY: optionalText,
-  GEMINI_MODEL: z.string().trim().regex(/^[a-zA-Z0-9._-]+$/).default('gemini-2.5-flash-lite'),
+  GEMINI_MODEL: z.string().trim().regex(/^[a-zA-Z0-9._-]+$/).default('gemini-3.1-flash-lite'),
   SUPPORT_CHAT_USER_DAILY_LIMIT: z.coerce.number().int().min(1).max(100).default(15),
   SUPPORT_CHAT_ORGANIZATION_DAILY_LIMIT: z.coerce.number().int().min(1).max(1000).default(60),
   PUBLIC_REGISTRATION_ENABLED: z.enum(['true', 'false']).default('false'),

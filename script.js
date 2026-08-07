@@ -39,9 +39,26 @@ document.addEventListener('DOMContentLoaded', () => {
   const statusColor = status => ({ ok: 'var(--success)', low: 'var(--warning)', out: 'var(--danger)' })[status];
 
   const dashboardStockTable = document.getElementById('dashboardStockTableBody');
-  const renderStock = products => {
+  const dashboardStockUpdatedAt = document.getElementById('dashboardStockUpdatedAt');
+  let dashboardProducts = [];
+  let dashboardStockFilter = 'all';
+  const formatUpdatedAt = value => {
+    if (!value) return 'Sem atualizações registradas';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Sem atualizações registradas';
+    return `Atualizado em ${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+  };
+  const renderStock = () => {
     if (!dashboardStockTable) return;
-    const visibleProducts = products.slice(0, 4);
+    const filteredProducts = dashboardStockFilter === 'critical'
+      ? dashboardProducts.filter(product => product.quantity <= product.minimumQuantity)
+      : dashboardProducts;
+    const visibleProducts = filteredProducts.slice(0, 4);
+    const newestUpdate = visibleProducts
+      .map(product => product.updatedAt || product.createdAt)
+      .filter(value => !Number.isNaN(new Date(value).getTime()))
+      .reduce((latest, value) => !latest || new Date(value).getTime() > new Date(latest).getTime() ? value : latest, null);
+    if (dashboardStockUpdatedAt) dashboardStockUpdatedAt.textContent = formatUpdatedAt(newestUpdate);
     dashboardStockTable.innerHTML = visibleProducts.length ? visibleProducts.map(product => {
       const status = productStatus(product);
       return `<tr><td><div class="prod-cell"><span class="prod-swatch" style="background:${statusColor(status)}"></span>${escapeHtml(product.name)}</div></td><td>${product.quantity}</td><td><span class="badge ${status}">${statusLabel(status)}</span></td><td>${formatDate(product.updatedAt || product.createdAt)}</td></tr>`;
@@ -63,9 +80,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const revenueCanvas = document.getElementById('revenueChart');
     if (revenueCanvas) {
       revenueCanvas.closest('.panel')?.classList.toggle('financial-panel-redacted', Boolean(dashboard.financialValuesRedacted));
-      if (dashboard.financialValuesRedacted) {
-        revenueChart?.destroy();
-      }
       revenueChart?.destroy();
       const gradient = revenueCanvas.getContext('2d').createLinearGradient(0, 0, 0, 220);
       gradient.addColorStop(0, 'rgba(91,78,242,0.22)');
@@ -121,11 +135,19 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCharts(dashboard);
   };
 
-  document.querySelectorAll('.tab').forEach(tab => {
+  document.querySelectorAll('[data-dashboard-stock-filter]').forEach(tab => {
     tab.addEventListener('click', () => {
-      tab.parentElement.querySelectorAll('.tab').forEach(item => item.classList.remove('active'));
-      tab.classList.add('active');
+      dashboardStockFilter = tab.dataset.dashboardStockFilter || 'all';
+      tab.parentElement.querySelectorAll('[data-dashboard-stock-filter]').forEach(item => {
+        item.classList.toggle('active', item === tab);
+        item.setAttribute('aria-pressed', String(item === tab));
+      });
+      renderStock();
     });
+  });
+
+  document.getElementById('dashboardHelpButton')?.addEventListener('click', () => {
+    document.getElementById('supportButton')?.click();
   });
 
   window.SevAuth?.ready.then(async user => {
@@ -136,7 +158,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // The dashboard keeps empty states until the API becomes available.
     }
     try {
-      renderStock(await window.SevApi.getProducts());
+      dashboardProducts = await window.SevApi.getProducts();
+      renderStock();
     } catch (error) {
       if (dashboardStockTable) dashboardStockTable.innerHTML = `<tr><td class="empty-table" colspan="4">${escapeHtml(error.message || 'Não foi possível carregar o estoque.')}</td></tr>`;
     }

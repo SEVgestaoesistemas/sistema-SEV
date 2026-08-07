@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { recordAudit } from '../audit.js';
 import { requireAccountAccess, requireApiKey, requireApiScope, requireAuth, requireCsrf, requireRoles } from '../auth/middleware.js';
 import { AppError } from '../errors.js';
+import { createCriticalStockAlert } from '../stock-alerts.js';
 import {
   createOrganizationApiKey,
   enforceApiRateLimit,
@@ -343,11 +344,11 @@ const insertSaleItemsAndStock = async (transaction, request, sale, products, ite
       [request.apiAuth.organizationId, product.id, request.apiAuth.id, sale.id, -item.quantity, `${notePrefix} #${sale.orderNumber}`]
     );
     if (product.quantity <= safeNumber(product.minimumQuantity)) {
-      await transaction.query(
-        `INSERT INTO notifications (organization_id, category, title, message)
-         VALUES ($1, 'stock', $2, $3)`,
-        [request.apiAuth.organizationId, 'Alerta de estoque critico', `${product.name} esta com ${product.quantity} unidade(s) apos o pedido #${sale.orderNumber}.`]
-      );
+      await createCriticalStockAlert(transaction, {
+        organizationId: request.apiAuth.organizationId,
+        title: 'Alerta de estoque crítico',
+        message: `${product.name} está com ${product.quantity} unidade(s) após o pedido #${sale.orderNumber}.`
+      });
     }
   }
 };
@@ -449,7 +450,7 @@ export const registerIntegrationRoutes = async app => {
               WHERE id = $1 AND organization_id = $2
               RETURNING id, external_id AS "externalId", name, sku, quantity, minimum_quantity AS "minimumQuantity",
                         unit_price_cents AS "unitPriceCents", updated_at AS "updatedAt"`,
-            [request.apiAuth.organizationId, current.rows[0].id, payload.name, payload.sku, payload.minimumQuantity, payload.unitPriceCents]
+            [current.rows[0].id, request.apiAuth.organizationId, payload.name, payload.sku, payload.minimumQuantity, payload.unitPriceCents]
           );
           product = result.rows[0];
           statusCode = 200;
@@ -542,11 +543,11 @@ export const registerIntegrationRoutes = async app => {
         );
         const updated = updatedResult.rows[0];
         if (safeNumber(updated.quantity) <= safeNumber(updated.minimumQuantity)) {
-          await transaction.query(
-            `INSERT INTO notifications (organization_id, category, title, message)
-             VALUES ($1, 'stock', $2, $3)`,
-            [request.apiAuth.organizationId, 'Alerta de estoque critico', `${updated.name} esta com ${updated.quantity} unidade(s) em estoque.`]
-          );
+          await createCriticalStockAlert(transaction, {
+            organizationId: request.apiAuth.organizationId,
+            title: 'Alerta de estoque crítico',
+            message: `${updated.name} está com ${updated.quantity} unidade(s) em estoque.`
+          });
         }
         await recordAudit(transaction, {
           organizationId: request.apiAuth.organizationId,

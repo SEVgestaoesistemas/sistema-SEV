@@ -24,7 +24,7 @@ const externalHeaders = (key, idempotencyKey) => ({
   'idempotency-key': idempotencyKey
 });
 
-test('API de integraÃ§Ã£o isola empresas, exige escopo, revoga chaves e processa operaÃ§Ãµes idempotentes', { skip: !enabled }, async () => {
+test('API de integração isola empresas, exige escopo, revoga chaves e processa operações idempotentes', { skip: !enabled }, async () => {
   const config = loadConfig();
   assert.ok(config.databaseUrl, 'DATABASE_URL is required for the API integrations security test.');
   const database = createDatabase(config);
@@ -118,6 +118,19 @@ test('API de integraÃ§Ã£o isola empresas, exige escopo, revoga chaves e proc
     });
     assert.equal(product.statusCode, 201);
     assert.equal(product.json().product.quantity, 0);
+
+    const updatedProduct = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/integrations/v1/products/product-a',
+      headers: externalHeaders(apiKey, 'product-a-update-0001'),
+      payload: { name: 'Product A updated', sku: 'A-2', minimumQuantity: 2, unitPriceCents: 1750 }
+    });
+    assert.equal(updatedProduct.statusCode, 200);
+    assert.equal(updatedProduct.json().product.name, 'Product A updated');
+    assert.equal(updatedProduct.json().product.sku, 'A-2');
+    assert.equal(updatedProduct.json().product.minimumQuantity, 2);
+    assert.equal(updatedProduct.json().product.unitPriceCents, 1750);
+    assert.equal(updatedProduct.json().product.quantity, 0);
 
     const movementPayload = { externalMovementId: 'entry-a-0001', type: 'entry', quantity: 5 };
     const stockEntry = await app.inject({

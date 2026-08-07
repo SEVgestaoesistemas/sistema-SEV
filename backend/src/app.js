@@ -22,7 +22,7 @@ import { registerReportRoutes } from './routes/reports.js';
 import { registerSupportRoutes } from './routes/support.js';
 import { registerIntegrationRoutes } from './routes/integrations.js';
 import { createGeminiChat } from './support/gemini.js';
-import { getClientIp } from './security/client-ip.js';
+import { getClientIp, isTrustedInfrastructureProxyIp } from './security/client-ip.js';
 
 export const buildApp = async (options = {}) => {
   const config = options.config || loadConfig();
@@ -30,7 +30,7 @@ export const buildApp = async (options = {}) => {
   const geminiChat = options.geminiChat || createGeminiChat(config);
   const app = Fastify({
     logger: options.logger ?? config.environment !== 'test',
-    trustProxy: config.trustProxy,
+    trustProxy: config.trustProxy ? isTrustedInfrastructureProxyIp : false,
     bodyLimit: 1024 * 1024
   });
 

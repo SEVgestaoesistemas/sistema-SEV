@@ -73,33 +73,29 @@ const headerValue = (request, name) => {
 
 const socketIp = request => normalizeIp(request.raw?.socket?.remoteAddress);
 
-const lastForwardedIp = request => {
-  const forwardedFor = headerValue(request, 'x-forwarded-for');
-  if (!forwardedFor) return null;
-  return normalizeIp(forwardedFor.split(',').at(-1));
-};
-
 export const isCloudflareProxyIp = value => isInRanges(cloudflareProxyRanges, value);
 
-// Render terminates public HTTP before forwarding to the web service. Depending
-// on the instance network, that internal socket can be private or loopback.
-// Render appends its immediate public peer to X-Forwarded-For; we use only that
-// final hop, never a client-provided one. Loopback is accepted only in production
-// so a local development server cannot trust a forged Cloudflare header.
+export const isTrustedInfrastructureProxyIp = value => (
+  isInRanges(privateProxyRanges, value) || isInRanges(loopbackProxyRanges, value)
+);
+
+// In Render, Fastify's request.ip is derived by trusting only the immediate
+// internal proxy (configured in app.js), so it stops at the first public address
+// and does not blindly trust earlier X-Forwarded-For entries. CF-Connecting-IP
+// is accepted only when it agrees with that independently resolved address.
 export const isTrustedCloudflareRequest = request => {
   const directPeer = socketIp(request);
   if (isCloudflareProxyIp(directPeer)) return true;
-  const renderInternalPeer = isInRanges(privateProxyRanges, directPeer)
-    || (request.server?.config?.environment === 'production' && isInRanges(loopbackProxyRanges, directPeer));
-  return renderInternalPeer && isCloudflareProxyIp(lastForwardedIp(request));
+  const forwardedIp = normalizeIp(request.ip);
+  const cloudflareClientIp = normalizeIp(headerValue(request, 'cf-connecting-ip'));
+  return isTrustedInfrastructureProxyIp(directPeer)
+    && Boolean(forwardedIp)
+    && cloudflareClientIp === forwardedIp;
 };
 
 export const getClientIp = request => {
   const cloudflareClientIp = normalizeIp(headerValue(request, 'cf-connecting-ip'));
   if (cloudflareClientIp && isTrustedCloudflareRequest(request)) return cloudflareClientIp;
 
-  // Do not use request.ip here: with trustProxy enabled it can be influenced by
-  // forwarded headers on direct-origin requests. The socket remains safe in
-  // local development and provides a conservative fallback in production.
-  return socketIp(request) || 'unknown';
+  return normalizeIp(request.ip) || socketIp(request) || 'unknown';
 };

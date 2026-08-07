@@ -58,6 +58,30 @@ test('login respeita o limite configurado por ambiente', async () => {
   await app.close();
 });
 
+test('proxy confiável para no primeiro IP público e ignora X-Forwarded-For anterior', async () => {
+  const app = await buildApp({ config: { ...config, trustProxy: true }, db: database, logger: false });
+  app.get('/test/client-ip', { config: { rateLimit: false } }, async request => ({
+    requestIp: request.ip,
+    clientIp: request.clientIp
+  }));
+  const response = await app.inject({
+    method: 'GET',
+    url: '/test/client-ip',
+    remoteAddress: '127.0.0.1',
+    headers: {
+      'x-forwarded-for': '203.0.113.99, 198.51.100.77',
+      'cf-connecting-ip': '203.0.113.99'
+    }
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.json(), {
+    requestIp: '198.51.100.77',
+    clientIp: '198.51.100.77'
+  });
+  await app.close();
+});
+
 test('recuperação pública orienta o cliente ao fluxo manual e expõe somente o contato configurado', async () => {
   const app = await buildApp({
     config: { ...config, adminWhatsAppNumber: '5581997498046' },

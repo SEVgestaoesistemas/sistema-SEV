@@ -58,7 +58,7 @@ test('login respeita o limite configurado por ambiente', async () => {
   await app.close();
 });
 
-test('proxy confiável para no primeiro IP público e ignora X-Forwarded-For anterior', async () => {
+test('aceita CF-Connecting-IP apenas após um salto Cloudflare confiável', async () => {
   const app = await buildApp({ config: { ...config, trustProxy: true }, db: database, logger: false });
   app.get('/test/client-ip', { config: { rateLimit: false } }, async request => ({
     requestIp: request.ip,
@@ -69,15 +69,15 @@ test('proxy confiável para no primeiro IP público e ignora X-Forwarded-For ant
     url: '/test/client-ip',
     remoteAddress: '127.0.0.1',
     headers: {
-      'x-forwarded-for': '203.0.113.99, 198.51.100.77',
+      'x-forwarded-for': '203.0.113.99, 104.23.209.49',
       'cf-connecting-ip': '203.0.113.99'
     }
   });
 
   assert.equal(response.statusCode, 200);
   assert.deepEqual(response.json(), {
-    requestIp: '198.51.100.77',
-    clientIp: '198.51.100.77'
+    requestIp: '104.23.209.49',
+    clientIp: '203.0.113.99'
   });
   await app.close();
 });

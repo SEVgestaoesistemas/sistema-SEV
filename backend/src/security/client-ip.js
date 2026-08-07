@@ -73,24 +73,31 @@ const headerValue = (request, name) => {
 
 const socketIp = request => normalizeIp(request.raw?.socket?.remoteAddress);
 
+const closestForwardedIp = request => {
+  const forwardedFor = headerValue(request, 'x-forwarded-for');
+  if (!forwardedFor) return null;
+
+  const values = forwardedFor.split(',').map(normalizeIp).filter(Boolean);
+  return values[values.length - 1] || null;
+};
+
 export const isCloudflareProxyIp = value => isInRanges(cloudflareProxyRanges, value);
 
 export const isTrustedInfrastructureProxyIp = value => (
   isInRanges(privateProxyRanges, value) || isInRanges(loopbackProxyRanges, value)
 );
 
-// In Render, Fastify's request.ip is derived by trusting only the immediate
-// internal proxy (configured in app.js), so it stops at the first public address
-// and does not blindly trust earlier X-Forwarded-For entries. CF-Connecting-IP
-// is accepted only when it agrees with that independently resolved address.
+// Render forwards requests to the application through an internal/loopback
+// proxy. CF-Connecting-IP is accepted only when the direct peer is Cloudflare,
+// or when the closest public hop in X-Forwarded-For is a published Cloudflare
+// address. A forged header sent straight to the origin does not meet either
+// condition and therefore falls back to Fastify's safely resolved request.ip.
 export const isTrustedCloudflareRequest = request => {
   const directPeer = socketIp(request);
   if (isCloudflareProxyIp(directPeer)) return true;
-  const forwardedIp = normalizeIp(request.ip);
-  const cloudflareClientIp = normalizeIp(headerValue(request, 'cf-connecting-ip'));
+
   return isTrustedInfrastructureProxyIp(directPeer)
-    && Boolean(forwardedIp)
-    && cloudflareClientIp === forwardedIp;
+    && isCloudflareProxyIp(closestForwardedIp(request));
 };
 
 export const getClientIp = request => {

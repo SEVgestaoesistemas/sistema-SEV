@@ -20,11 +20,12 @@ test('usa CF-Connecting-IP quando a conexão vem de uma faixa oficial da Cloudfl
   assert.equal(getClientIp(incoming), '198.51.100.24');
 });
 
-test('aceita CF-Connecting-IP pela cadeia Render privada quando coincide com o IP resolvido', () => {
+test('aceita CF-Connecting-IP pela cadeia Render privada quando o salto anterior pertence à Cloudflare', () => {
   const incoming = request({
     remoteAddress: '10.12.0.8',
-    ip: '198.51.100.24',
+    ip: '104.23.209.49',
     headers: {
+      'x-forwarded-for': '198.51.100.24, 104.23.209.49',
       'cf-connecting-ip': '198.51.100.24'
     }
   });
@@ -33,11 +34,12 @@ test('aceita CF-Connecting-IP pela cadeia Render privada quando coincide com o I
   assert.equal(getClientIp(incoming), '198.51.100.24');
 });
 
-test('aceita CF-Connecting-IP pela cadeia Render em loopback quando coincide com o IP resolvido', () => {
+test('aceita CF-Connecting-IP pela cadeia Render em loopback quando o salto anterior pertence à Cloudflare', () => {
   const incoming = request({
     remoteAddress: '127.0.0.1',
-    ip: '198.51.100.24',
+    ip: '104.23.209.49',
     headers: {
+      'x-forwarded-for': '198.51.100.24, 104.23.209.49',
       'cf-connecting-ip': '198.51.100.24'
     }
   });
@@ -60,11 +62,12 @@ test('ignora CF-Connecting-IP forjado em uma conexão que não veio da Cloudflar
   assert.equal(getClientIp(incoming), '198.51.100.77');
 });
 
-test('ignora o spoofing no Render quando o IP direto anexado não pertence à Cloudflare', () => {
+test('ignora o spoofing no Render quando o salto anterior não pertence à Cloudflare', () => {
   const incoming = request({
     remoteAddress: '10.12.0.8',
     ip: '198.51.100.77',
     headers: {
+      'x-forwarded-for': '203.0.113.99, 198.51.100.77',
       'cf-connecting-ip': '203.0.113.99'
     }
   });
@@ -73,11 +76,12 @@ test('ignora o spoofing no Render quando o IP direto anexado não pertence à Cl
   assert.equal(getClientIp(incoming), '198.51.100.77');
 });
 
-test('ignora header forjado no loopback quando não coincide com o IP resolvido', () => {
+test('ignora header forjado no loopback quando o salto anterior não é da Cloudflare', () => {
   const incoming = request({
     remoteAddress: '127.0.0.1',
     ip: '198.51.100.77',
     headers: {
+      'x-forwarded-for': '203.0.113.99, 198.51.100.77',
       'cf-connecting-ip': '203.0.113.99'
     }
   });

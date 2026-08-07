@@ -22,6 +22,7 @@ import { registerReportRoutes } from './routes/reports.js';
 import { registerSupportRoutes } from './routes/support.js';
 import { registerIntegrationRoutes } from './routes/integrations.js';
 import { createGeminiChat } from './support/gemini.js';
+import { getClientIp } from './security/client-ip.js';
 
 export const buildApp = async (options = {}) => {
   const config = options.config || loadConfig();
@@ -39,6 +40,7 @@ export const buildApp = async (options = {}) => {
   app.decorateRequest('auth', null);
   app.decorateRequest('tenantDb', null);
   app.decorateRequest('apiAuth', null);
+  app.decorateRequest('clientIp', null);
 
   if (config.environment === 'production' && config.loginRateLimitMax > 5) {
     app.log.warn(
@@ -65,7 +67,11 @@ export const buildApp = async (options = {}) => {
     max: 100,
     timeWindow: '1 minute',
     ban: 2,
-    keyGenerator: request => request.ip
+    keyGenerator: request => getClientIp(request)
+  });
+
+  app.addHook('onRequest', async request => {
+    request.clientIp = getClientIp(request);
   });
 
   app.setErrorHandler((error, request, reply) => {

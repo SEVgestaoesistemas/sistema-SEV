@@ -159,7 +159,7 @@ const writeSyncLog = async (transaction, request, {
     errorCode,
     JSON.stringify(payloadSummary),
     payloadHash,
-    request.ip || null,
+    request.clientIp || null,
     Math.max(0, Date.now() - startedAt)
   ]
 );

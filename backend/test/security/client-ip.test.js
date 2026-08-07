@@ -1,0 +1,64 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { getClientIp, isCloudflareProxyIp, isTrustedCloudflareRequest } from '../../src/security/client-ip.js';
+
+const request = ({ remoteAddress, headers = {} }) => ({
+  raw: { socket: { remoteAddress } },
+  headers
+});
+
+test('usa CF-Connecting-IP quando a conexão vem de uma faixa oficial da Cloudflare', () => {
+  const incoming = request({
+    remoteAddress: '173.245.48.12',
+    headers: { 'cf-connecting-ip': '198.51.100.24' }
+  });
+
+  assert.equal(isCloudflareProxyIp('173.245.48.12'), true);
+  assert.equal(isTrustedCloudflareRequest(incoming), true);
+  assert.equal(getClientIp(incoming), '198.51.100.24');
+});
+
+test('aceita CF-Connecting-IP pela cadeia Render privada somente quando o último hop é Cloudflare', () => {
+  const incoming = request({
+    remoteAddress: '10.12.0.8',
+    headers: {
+      'x-forwarded-for': '198.51.100.24, 173.245.48.12',
+      'cf-connecting-ip': '198.51.100.24'
+    }
+  });
+
+  assert.equal(isTrustedCloudflareRequest(incoming), true);
+  assert.equal(getClientIp(incoming), '198.51.100.24');
+});
+
+test('ignora CF-Connecting-IP forjado em uma conexão que não veio da Cloudflare', () => {
+  const incoming = request({
+    remoteAddress: '198.51.100.77',
+    headers: {
+      'x-forwarded-for': '173.245.48.12',
+      'cf-connecting-ip': '203.0.113.99'
+    }
+  });
+
+  assert.equal(isTrustedCloudflareRequest(incoming), false);
+  assert.equal(getClientIp(incoming), '198.51.100.77');
+});
+
+test('ignora o spoofing no Render quando o IP direto anexado não pertence à Cloudflare', () => {
+  const incoming = request({
+    remoteAddress: '10.12.0.8',
+    headers: {
+      'x-forwarded-for': '173.245.48.12, 198.51.100.77',
+      'cf-connecting-ip': '203.0.113.99'
+    }
+  });
+
+  assert.equal(isTrustedCloudflareRequest(incoming), false);
+  assert.equal(getClientIp(incoming), '10.12.0.8');
+});
+
+test('mantém o IP do socket como fallback no desenvolvimento local', () => {
+  const incoming = request({ remoteAddress: '127.0.0.1' });
+
+  assert.equal(getClientIp(incoming), '127.0.0.1');
+});

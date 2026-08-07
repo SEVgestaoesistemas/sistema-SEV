@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isIP } from 'node:net';
 
 const optionalText = z.preprocess(
   value => typeof value === 'string' && !value.trim() ? undefined : value,
@@ -8,6 +9,16 @@ const optionalText = z.preprocess(
 const optionalWorkerIpSignatureSecret = z.preprocess(
   value => typeof value === 'string' && !value.trim() ? undefined : value,
   z.string().trim().min(32, 'WORKER_IP_SIGNATURE_SECRET deve ter pelo menos 32 caracteres.').optional()
+);
+
+const optionalIpAddress = z.preprocess(
+  value => typeof value === 'string' && !value.trim() ? undefined : value,
+  z.string().trim().refine(value => isIP(value) !== 0, 'Informe um endereço IP válido.').optional()
+);
+
+const optionalIsoDateTime = z.preprocess(
+  value => typeof value === 'string' && !value.trim() ? undefined : value,
+  z.string().trim().refine(value => !Number.isNaN(Date.parse(value)), 'Informe uma data/hora ISO válida.').optional()
 );
 
 const environmentSchema = z.object({
@@ -36,6 +47,8 @@ const environmentSchema = z.object({
   PUBLIC_REGISTRATION_ENABLED: z.enum(['true', 'false']).default('false'),
   PLATFORM_BOOTSTRAP_TOKEN: optionalText,
   WORKER_IP_SIGNATURE_SECRET: optionalWorkerIpSignatureSecret,
+  LOAD_TEST_HEALTH_ALLOWED_IP: optionalIpAddress,
+  LOAD_TEST_HEALTH_BYPASS_EXPIRES_AT: optionalIsoDateTime,
   TRUST_PROXY: z.enum(['true', 'false']).optional(),
   DATABASE_SSL: z.enum(['true', 'false']).optional(),
   DATABASE_SSL_CA_FILE: optionalText,
@@ -55,6 +68,9 @@ export const loadConfig = (environment = process.env) => {
   const values = parsed.data;
   if (values.NODE_ENV === 'production' && !values.DATABASE_URL) {
     throw new Error('DATABASE_URL é obrigatória em produção.');
+  }
+  if (Boolean(values.LOAD_TEST_HEALTH_ALLOWED_IP) !== Boolean(values.LOAD_TEST_HEALTH_BYPASS_EXPIRES_AT)) {
+    throw new Error('LOAD_TEST_HEALTH_ALLOWED_IP e LOAD_TEST_HEALTH_BYPASS_EXPIRES_AT devem ser configuradas juntas.');
   }
 
   return {
@@ -77,6 +93,10 @@ export const loadConfig = (environment = process.env) => {
     publicRegistrationEnabled: values.PUBLIC_REGISTRATION_ENABLED === 'true',
     platformBootstrapToken: values.PLATFORM_BOOTSTRAP_TOKEN,
     workerIpSignatureSecret: values.WORKER_IP_SIGNATURE_SECRET,
+    loadTestHealthAllowedIp: values.LOAD_TEST_HEALTH_ALLOWED_IP,
+    loadTestHealthBypassExpiresAt: values.LOAD_TEST_HEALTH_BYPASS_EXPIRES_AT
+      ? Date.parse(values.LOAD_TEST_HEALTH_BYPASS_EXPIRES_AT)
+      : undefined,
     trustProxy: values.TRUST_PROXY ? values.TRUST_PROXY === 'true' : values.NODE_ENV === 'production',
     databaseUrl: values.DATABASE_URL,
     databaseSsl: values.DATABASE_SSL ? values.DATABASE_SSL === 'true' : values.NODE_ENV === 'production',

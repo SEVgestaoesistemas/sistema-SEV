@@ -54,6 +54,12 @@ services:
       # Segredo compartilhado com o Worker Cloudflare para assinar o IP real do visitante.
       - key: WORKER_IP_SIGNATURE_SECRET
         sync: false
+      # Exceção temporária de teste de carga: somente GET /api/v1/health e IP exato.
+      # Cadastre ambos os valores no painel do Render e remova-os após o teste.
+      - key: LOAD_TEST_HEALTH_ALLOWED_IP
+        sync: false
+      - key: LOAD_TEST_HEALTH_BYPASS_EXPIRES_AT
+        sync: false
       - key: TRUST_PROXY
         value: "true"
       - key: DATABASE_SSL

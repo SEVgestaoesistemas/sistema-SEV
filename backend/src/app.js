@@ -23,6 +23,7 @@ import { registerSupportRoutes } from './routes/support.js';
 import { registerIntegrationRoutes } from './routes/integrations.js';
 import { createGeminiChat } from './support/gemini.js';
 import { getClientIp, isTrustedInfrastructureProxyIp } from './security/client-ip.js';
+import { shouldBypassHealthRateLimit } from './security/load-test-bypass.js';
 
 export const buildApp = async (options = {}) => {
   const config = options.config || loadConfig();
@@ -67,7 +68,8 @@ export const buildApp = async (options = {}) => {
     max: 100,
     timeWindow: '1 minute',
     ban: 2,
-    keyGenerator: request => getClientIp(request, config.workerIpSignatureSecret)
+    keyGenerator: request => getClientIp(request, config.workerIpSignatureSecret),
+    allowList: (request, key) => shouldBypassHealthRateLimit(request, key, config)
   });
 
   app.addHook('onRequest', async request => {

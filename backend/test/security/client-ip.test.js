@@ -1,92 +1,72 @@
+import { createHmac } from 'node:crypto';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getClientIp, isCloudflareProxyIp, isTrustedCloudflareRequest, isTrustedInfrastructureProxyIp } from '../../src/security/client-ip.js';
+import { buildWorkerIpSignaturePayload, getClientIp, getSignedWorkerClientIp, isTrustedInfrastructureProxyIp } from '../../src/security/client-ip.js';
 
-const request = ({ remoteAddress, ip, headers = {} }) => ({
-  raw: { socket: { remoteAddress } },
+const workerSecret = 'worker-secret-for-tests-with-at-least-32-characters';
+
+const request = ({ remoteAddress, ip, headers = {}, method = 'PUT', url = '/api/v1/integrations/v1/products/item' }) => ({
+  raw: { socket: { remoteAddress }, url },
   headers,
-  ip
+  ip,
+  method,
+  url
 });
 
-test('usa CF-Connecting-IP quando a conexão vem de uma faixa oficial da Cloudflare', () => {
-  const incoming = request({
-    remoteAddress: '173.245.48.12',
-    ip: '198.51.100.24',
-    headers: { 'cf-connecting-ip': '198.51.100.24' }
-  });
-
-  assert.equal(isCloudflareProxyIp('173.245.48.12'), true);
-  assert.equal(isTrustedCloudflareRequest(incoming), true);
-  assert.equal(getClientIp(incoming), '198.51.100.24');
+const signedHeaders = ({ timestamp, ip, method = 'PUT', pathname = '/api/v1/integrations/v1/products/item' }) => ({
+  'x-sev-client-ip': ip,
+  'x-sev-client-ip-timestamp': String(timestamp),
+  'x-sev-client-ip-signature': createHmac('sha256', workerSecret)
+    .update(buildWorkerIpSignaturePayload({ timestamp: String(timestamp), ip, method, pathname }))
+    .digest('hex')
 });
 
-test('aceita CF-Connecting-IP pela cadeia Render privada quando o salto anterior pertence à Cloudflare', () => {
-  const incoming = request({
-    remoteAddress: '10.12.0.8',
-    ip: '104.23.209.49',
-    headers: {
-      'x-forwarded-for': '198.51.100.24, 104.23.209.49',
-      'cf-connecting-ip': '198.51.100.24'
-    }
-  });
-
-  assert.equal(isTrustedCloudflareRequest(incoming), true);
-  assert.equal(getClientIp(incoming), '198.51.100.24');
-});
-
-test('aceita CF-Connecting-IP pela cadeia Render em loopback quando o salto anterior pertence à Cloudflare', () => {
+test('usa o IP real assinado pelo Worker como fonte de verdade', () => {
+  const timestamp = 1_785_730_000;
+  const visitorIp = '2804:7f7:df00:bafc:c5e6:2c71:bd77:1d1a';
   const incoming = request({
     remoteAddress: '127.0.0.1',
     ip: '104.23.209.49',
-    headers: {
-      'x-forwarded-for': '198.51.100.24, 104.23.209.49',
-      'cf-connecting-ip': '198.51.100.24'
-    }
+    headers: signedHeaders({ timestamp, ip: visitorIp })
   });
 
-  assert.equal(isTrustedCloudflareRequest(incoming), true);
-  assert.equal(getClientIp(incoming), '198.51.100.24');
+  assert.equal(getSignedWorkerClientIp(incoming, workerSecret, timestamp * 1000), visitorIp);
+  assert.equal(getClientIp(incoming, workerSecret, timestamp * 1000), visitorIp);
 });
 
-test('ignora CF-Connecting-IP forjado em uma conexão que não veio da Cloudflare', () => {
+test('ignora assinatura forjada ou reutilizada para outro método ou caminho', () => {
+  const timestamp = 1_785_730_000;
+  const incoming = request({
+    remoteAddress: '127.0.0.1',
+    ip: '104.23.209.49',
+    method: 'PATCH',
+    headers: signedHeaders({ timestamp, ip: '203.0.113.99', method: 'PUT' })
+  });
+
+  assert.equal(getSignedWorkerClientIp(incoming, workerSecret, timestamp * 1000), null);
+  assert.equal(getClientIp(incoming, workerSecret, timestamp * 1000), '104.23.209.49');
+});
+
+test('ignora assinatura expirada e mantém o fallback seguro', () => {
+  const timestamp = 1_785_730_000;
+  const incoming = request({
+    remoteAddress: '127.0.0.1',
+    ip: '104.23.209.49',
+    headers: signedHeaders({ timestamp, ip: '203.0.113.99' })
+  });
+
+  assert.equal(getSignedWorkerClientIp(incoming, workerSecret, (timestamp * 1000) + 60_001), null);
+});
+
+test('ignora cabeçalhos de Worker sem segredo configurado', () => {
+  const timestamp = 1_785_730_000;
   const incoming = request({
     remoteAddress: '198.51.100.77',
     ip: '198.51.100.77',
-    headers: {
-      'x-forwarded-for': '173.245.48.12',
-      'cf-connecting-ip': '203.0.113.99'
-    }
+    headers: signedHeaders({ timestamp, ip: '203.0.113.99' })
   });
 
-  assert.equal(isTrustedCloudflareRequest(incoming), false);
-  assert.equal(getClientIp(incoming), '198.51.100.77');
-});
-
-test('ignora o spoofing no Render quando o salto anterior não pertence à Cloudflare', () => {
-  const incoming = request({
-    remoteAddress: '10.12.0.8',
-    ip: '198.51.100.77',
-    headers: {
-      'x-forwarded-for': '203.0.113.99, 198.51.100.77',
-      'cf-connecting-ip': '203.0.113.99'
-    }
-  });
-
-  assert.equal(isTrustedCloudflareRequest(incoming), false);
-  assert.equal(getClientIp(incoming), '198.51.100.77');
-});
-
-test('ignora header forjado no loopback quando o salto anterior não é da Cloudflare', () => {
-  const incoming = request({
-    remoteAddress: '127.0.0.1',
-    ip: '198.51.100.77',
-    headers: {
-      'x-forwarded-for': '203.0.113.99, 198.51.100.77',
-      'cf-connecting-ip': '203.0.113.99'
-    }
-  });
-
-  assert.equal(isTrustedCloudflareRequest(incoming), false);
+  assert.equal(getSignedWorkerClientIp(incoming, undefined, timestamp * 1000), null);
   assert.equal(getClientIp(incoming), '198.51.100.77');
 });
 

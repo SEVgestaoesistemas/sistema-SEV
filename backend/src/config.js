@@ -5,6 +5,11 @@ const optionalText = z.preprocess(
   z.string().trim().min(1).optional()
 );
 
+const optionalWorkerIpSignatureSecret = z.preprocess(
+  value => typeof value === 'string' && !value.trim() ? undefined : value,
+  z.string().trim().min(32, 'WORKER_IP_SIGNATURE_SECRET deve ter pelo menos 32 caracteres.').optional()
+);
+
 const environmentSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3333),
@@ -30,6 +35,7 @@ const environmentSchema = z.object({
   SUPPORT_CHAT_ORGANIZATION_DAILY_LIMIT: z.coerce.number().int().min(1).max(1000).default(60),
   PUBLIC_REGISTRATION_ENABLED: z.enum(['true', 'false']).default('false'),
   PLATFORM_BOOTSTRAP_TOKEN: optionalText,
+  WORKER_IP_SIGNATURE_SECRET: optionalWorkerIpSignatureSecret,
   TRUST_PROXY: z.enum(['true', 'false']).optional(),
   DATABASE_SSL: z.enum(['true', 'false']).optional(),
   DATABASE_SSL_CA_FILE: optionalText,
@@ -70,6 +76,7 @@ export const loadConfig = (environment = process.env) => {
     supportChatOrganizationDailyLimit: values.SUPPORT_CHAT_ORGANIZATION_DAILY_LIMIT,
     publicRegistrationEnabled: values.PUBLIC_REGISTRATION_ENABLED === 'true',
     platformBootstrapToken: values.PLATFORM_BOOTSTRAP_TOKEN,
+    workerIpSignatureSecret: values.WORKER_IP_SIGNATURE_SECRET,
     trustProxy: values.TRUST_PROXY ? values.TRUST_PROXY === 'true' : values.NODE_ENV === 'production',
     databaseUrl: values.DATABASE_URL,
     databaseSsl: values.DATABASE_SSL ? values.DATABASE_SSL === 'true' : values.NODE_ENV === 'production',

@@ -1,31 +1,5 @@
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { BlockList, isIP } from 'node:net';
-
-// Source: https://www.cloudflare.com/ips (reviewed on 2026-08-07).
-// Keep this list aligned with Cloudflare's published IPv4 and IPv6 ranges.
-const cloudflareCidrs = [
-  '173.245.48.0/20',
-  '103.21.244.0/22',
-  '103.22.200.0/22',
-  '103.31.4.0/22',
-  '141.101.64.0/18',
-  '108.162.192.0/18',
-  '190.93.240.0/20',
-  '188.114.96.0/20',
-  '197.234.240.0/22',
-  '198.41.128.0/17',
-  '162.158.0.0/15',
-  '104.16.0.0/13',
-  '104.24.0.0/14',
-  '172.64.0.0/13',
-  '131.0.72.0/22',
-  '2400:cb00::/32',
-  '2606:4700::/32',
-  '2803:f800::/32',
-  '2405:b500::/32',
-  '2405:8100::/32',
-  '2a06:98c0::/29',
-  '2c0f:f248::/32'
-];
 
 const privateProxyCidrs = [
   '10.0.0.0/8',
@@ -39,6 +13,14 @@ const loopbackProxyCidrs = [
   '::1/128'
 ];
 
+const workerHeaderNames = {
+  ip: 'x-sev-client-ip',
+  timestamp: 'x-sev-client-ip-timestamp',
+  signature: 'x-sev-client-ip-signature'
+};
+
+const workerSignatureMaxAgeMs = 60 * 1000;
+
 const blockListFromCidrs = cidrs => {
   const blockList = new BlockList();
   for (const cidr of cidrs) {
@@ -48,7 +30,6 @@ const blockListFromCidrs = cidrs => {
   return blockList;
 };
 
-const cloudflareProxyRanges = blockListFromCidrs(cloudflareCidrs);
 const privateProxyRanges = blockListFromCidrs(privateProxyCidrs);
 const loopbackProxyRanges = blockListFromCidrs(loopbackProxyCidrs);
 
@@ -73,36 +54,57 @@ const headerValue = (request, name) => {
 
 const socketIp = request => normalizeIp(request.raw?.socket?.remoteAddress);
 
-const closestForwardedIp = request => {
-  const forwardedFor = headerValue(request, 'x-forwarded-for');
-  if (!forwardedFor) return null;
-
-  const values = forwardedFor.split(',').map(normalizeIp).filter(Boolean);
-  return values[values.length - 1] || null;
+const requestPathname = request => {
+  const rawUrl = request.raw?.url || request.url || '/';
+  try {
+    return new URL(rawUrl, 'http://sev.internal').pathname;
+  } catch {
+    return '/';
+  }
 };
 
-export const isCloudflareProxyIp = value => isInRanges(cloudflareProxyRanges, value);
+const safeSignatureEquals = (expected, received) => {
+  if (!/^[a-f0-9]{64}$/i.test(received || '')) return false;
+  const expectedBuffer = Buffer.from(expected, 'hex');
+  const receivedBuffer = Buffer.from(received, 'hex');
+  return expectedBuffer.length === receivedBuffer.length && timingSafeEqual(expectedBuffer, receivedBuffer);
+};
 
 export const isTrustedInfrastructureProxyIp = value => (
   isInRanges(privateProxyRanges, value) || isInRanges(loopbackProxyRanges, value)
 );
 
-// Render forwards requests to the application through an internal/loopback
-// proxy. CF-Connecting-IP is accepted only when the direct peer is Cloudflare,
-// or when the closest public hop in X-Forwarded-For is a published Cloudflare
-// address. A forged header sent straight to the origin does not meet either
-// condition and therefore falls back to Fastify's safely resolved request.ip.
-export const isTrustedCloudflareRequest = request => {
-  const directPeer = socketIp(request);
-  if (isCloudflareProxyIp(directPeer)) return true;
+export const buildWorkerIpSignaturePayload = ({ timestamp, ip, method, pathname }) => (
+  `sev-worker-ip-v1\n${timestamp}\n${ip}\n${method.toUpperCase()}\n${pathname}`
+);
 
-  return isTrustedInfrastructureProxyIp(directPeer)
-    && isCloudflareProxyIp(closestForwardedIp(request));
+export const getSignedWorkerClientIp = (request, workerIpSignatureSecret, now = Date.now()) => {
+  if (!workerIpSignatureSecret) return null;
+
+  const ip = normalizeIp(headerValue(request, workerHeaderNames.ip));
+  const timestamp = Number(headerValue(request, workerHeaderNames.timestamp));
+  const signature = headerValue(request, workerHeaderNames.signature);
+  if (!ip || !Number.isSafeInteger(timestamp) || !signature) return null;
+
+  const timestampMs = timestamp * 1000;
+  if (Math.abs(now - timestampMs) > workerSignatureMaxAgeMs) return null;
+
+  const payload = buildWorkerIpSignaturePayload({
+    timestamp,
+    ip,
+    method: request.method || 'GET',
+    pathname: requestPathname(request)
+  });
+  const expectedSignature = createHmac('sha256', workerIpSignatureSecret).update(payload).digest('hex');
+  return safeSignatureEquals(expectedSignature, signature) ? ip : null;
 };
 
-export const getClientIp = request => {
-  const cloudflareClientIp = normalizeIp(headerValue(request, 'cf-connecting-ip'));
-  if (cloudflareClientIp && isTrustedCloudflareRequest(request)) return cloudflareClientIp;
-
-  return normalizeIp(request.ip) || socketIp(request) || 'unknown';
-};
+// A valid HMAC from the Worker is the only trusted source of the visitor IP.
+// This does not rely on Cloudflare/Render forwarding CF-Connecting-IP and a
+// caller that reaches the public Render hostname cannot forge the value.
+export const getClientIp = (request, workerIpSignatureSecret, now) => (
+  getSignedWorkerClientIp(request, workerIpSignatureSecret, now)
+  || normalizeIp(request.ip)
+  || socketIp(request)
+  || 'unknown'
+);

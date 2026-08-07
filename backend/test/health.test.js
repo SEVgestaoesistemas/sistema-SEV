@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 import { buildApp } from '../src/app.js';
+import { buildWorkerIpSignaturePayload } from '../src/security/client-ip.js';
 
 const config = {
   environment: 'test',
@@ -13,6 +15,7 @@ const config = {
   loginRateLimitWindow: '15 minutes',
   publicRegistrationEnabled: false,
   platformBootstrapToken: undefined,
+  workerIpSignatureSecret: undefined,
   trustProxy: false,
   databaseUrl: undefined,
   databaseSsl: false,
@@ -58,8 +61,23 @@ test('login respeita o limite configurado por ambiente', async () => {
   await app.close();
 });
 
-test('aceita CF-Connecting-IP apenas após um salto Cloudflare confiável', async () => {
-  const app = await buildApp({ config: { ...config, trustProxy: true }, db: database, logger: false });
+test('usa somente o IP assinado pelo Worker e ignora cabeçalho forjado', async () => {
+  const timestamp = Math.floor(Date.now() / 1000);
+  const workerIpSignatureSecret = 'worker-secret-for-tests-with-at-least-32-characters';
+  const workerIp = '203.0.113.99';
+  const signature = createHmac('sha256', workerIpSignatureSecret)
+    .update(buildWorkerIpSignaturePayload({
+      timestamp: String(timestamp),
+      ip: workerIp,
+      method: 'GET',
+      pathname: '/test/client-ip'
+    }))
+    .digest('hex');
+  const app = await buildApp({
+    config: { ...config, trustProxy: true, workerIpSignatureSecret },
+    db: database,
+    logger: false
+  });
   app.get('/test/client-ip', { config: { rateLimit: false } }, async request => ({
     requestIp: request.ip,
     clientIp: request.clientIp
@@ -69,8 +87,10 @@ test('aceita CF-Connecting-IP apenas após um salto Cloudflare confiável', asyn
     url: '/test/client-ip',
     remoteAddress: '127.0.0.1',
     headers: {
-      'x-forwarded-for': '203.0.113.99, 104.23.209.49',
-      'cf-connecting-ip': '203.0.113.99'
+      'x-forwarded-for': '104.23.209.49',
+      'x-sev-client-ip': workerIp,
+      'x-sev-client-ip-timestamp': String(timestamp),
+      'x-sev-client-ip-signature': signature
     }
   });
 
@@ -78,6 +98,24 @@ test('aceita CF-Connecting-IP apenas após um salto Cloudflare confiável', asyn
   assert.deepEqual(response.json(), {
     requestIp: '104.23.209.49',
     clientIp: '203.0.113.99'
+  });
+
+  const spoofed = await app.inject({
+    method: 'GET',
+    url: '/test/client-ip',
+    remoteAddress: '127.0.0.1',
+    headers: {
+      'x-forwarded-for': '104.23.209.49',
+      'x-sev-client-ip': '198.51.100.42',
+      'x-sev-client-ip-timestamp': String(timestamp),
+      'x-sev-client-ip-signature': '0'.repeat(64)
+    }
+  });
+
+  assert.equal(spoofed.statusCode, 200);
+  assert.deepEqual(spoofed.json(), {
+    requestIp: '104.23.209.49',
+    clientIp: '104.23.209.49'
   });
   await app.close();
 });

@@ -51,6 +51,9 @@ services:
       # Segredo usado uma única vez para definir o administrador da plataforma.
       - key: PLATFORM_BOOTSTRAP_TOKEN
         sync: false
+      # Segredo compartilhado com o Worker Cloudflare para assinar o IP real do visitante.
+      - key: WORKER_IP_SIGNATURE_SECRET
+        sync: false
       - key: TRUST_PROXY
         value: "true"
       - key: DATABASE_SSL

@@ -1,0 +1,6 @@
+name = "sev-api-client-ip-proxy"
+main = "src/index.js"
+compatibility_date = "2026-08-07"
+
+[vars]
+ORIGIN_URL = "https://sev-api-7j7b.onrender.com"

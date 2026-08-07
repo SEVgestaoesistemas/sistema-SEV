@@ -67,11 +67,11 @@ export const buildApp = async (options = {}) => {
     max: 100,
     timeWindow: '1 minute',
     ban: 2,
-    keyGenerator: request => getClientIp(request)
+    keyGenerator: request => getClientIp(request, config.workerIpSignatureSecret)
   });
 
   app.addHook('onRequest', async request => {
-    request.clientIp = getClientIp(request);
+    request.clientIp = getClientIp(request, config.workerIpSignatureSecret);
   });
 
   app.setErrorHandler((error, request, reply) => {

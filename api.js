@@ -46,6 +46,8 @@
   const messageForResponse = (response, data, fallback) => {
     const code = data?.error?.code;
     const serverMessage = data?.error?.message;
+    const validationMessage = data?.error?.details?.fields?.[0]?.message;
+    if (code === 'VALIDATION_ERROR' && validationMessage) return validationMessage;
     if (fallbackMessages[code]) return fallbackMessages[code];
     if (serverMessage) return serverMessage;
     if (response?.status === 429) return fallbackMessages.RATE_LIMITED;
@@ -60,6 +62,7 @@
     error.name = 'SevApiError';
     error.status = response?.status || 0;
     error.code = data?.error?.code || 'REQUEST_FAILED';
+    error.details = data?.error?.details || null;
     error.retryAfterSeconds = Number(response?.headers?.get('retry-after')) || null;
     return error;
   };

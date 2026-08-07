@@ -142,7 +142,7 @@
       </tr>`).join('');
   };
 
-  const fillExtractedData = invoice => {
+  const fillExtractedData = (invoice, file) => {
     reviewForm.elements.supplier.value = invoice.supplierName || '';
     reviewForm.elements.supplierCnpj.value = invoice.supplierCnpj || '';
     reviewForm.elements.documentNumber.value = invoice.documentNumber || '';
@@ -153,8 +153,8 @@
     reviewForm.elements.amount.value = formatInputCurrency(invoice.amountCents);
     reviewForm.elements.description.value = invoice.description || '';
     reviewFile.textContent = invoice.dueDate
-      ? `${selectedFile.name} foi reconhecido. Confira todos os dados antes de salvar.`
-      : `${selectedFile.name} foi reconhecido. O XML não informa o vencimento; preencha-o antes de salvar.`;
+      ? `${file.name} foi reconhecido. Confira todos os dados antes de salvar.`
+      : `${file.name} foi reconhecido. O XML não informa o vencimento; preencha-o antes de salvar.`;
     renderInvoiceItems(invoice.items || []);
   };
 
@@ -169,24 +169,32 @@
       fileInput.click();
       return;
     }
+    const fileBeingAnalyzed = selectedFile;
     analyzeButton.disabled = true;
     analyzeButton.textContent = 'Lendo XML…';
     setStatus('Validando e extraindo os dados do XML da NF-e…');
     try {
-      const xmlContent = await selectedFile.text();
-      const invoice = await window.SevApi.parseNfeXml({ fileName: selectedFile.name, xmlContent });
-      if (selectedFile === null) return;
+      const xmlContent = await fileBeingAnalyzed.text();
+      if (selectedFile !== fileBeingAnalyzed) return;
+
+      const invoice = await window.SevApi.parseNfeXml({ fileName: fileBeingAnalyzed.name, xmlContent });
+      if (selectedFile !== fileBeingAnalyzed) return;
+
       parsedInvoice = invoice;
-      fillExtractedData(invoice);
+      fillExtractedData(invoice, fileBeingAnalyzed);
       review.hidden = false;
       setStatus('Dados extraídos. Revise e confirme manualmente antes de adicionar a despesa.');
       reviewForm.elements.supplier.focus();
     } catch (error) {
+      if (selectedFile !== fileBeingAnalyzed) return;
+
       review.hidden = true;
       clearInvoiceItems();
       parsedInvoice = null;
       setStatus(error.message || 'Não foi possível ler este XML de NF-e.', true);
     } finally {
+      if (selectedFile !== fileBeingAnalyzed) return;
+
       analyzeButton.disabled = false;
       analyzeButton.textContent = 'Ler novamente';
     }

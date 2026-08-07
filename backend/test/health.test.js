@@ -61,6 +61,28 @@ test('login respeita o limite configurado por ambiente', async () => {
   await app.close();
 });
 
+test('API retorna mensagem e detalhes seguros para o campo inválido', async () => {
+  const app = await buildApp({ config, db: database, logger: false });
+  const response = await app.inject({
+    method: 'POST',
+    url: '/api/v1/auth/login',
+    payload: { email: 'email-inválido', password: '' }
+  });
+
+  assert.equal(response.statusCode, 400);
+  assert.deepEqual(response.json().error, {
+    code: 'VALIDATION_ERROR',
+    message: 'Informe um e-mail válido.',
+    details: {
+      fields: [
+        { field: 'e-mail', message: 'Informe um e-mail válido.' },
+        { field: 'senha', message: 'Informe senha com pelo menos 1 caractere.' }
+      ]
+    }
+  });
+  await app.close();
+});
+
 test('usa somente o IP assinado pelo Worker e ignora cabeçalho forjado', async () => {
   const timestamp = Math.floor(Date.now() / 1000);
   const workerIpSignatureSecret = 'worker-secret-for-tests-with-at-least-32-characters';

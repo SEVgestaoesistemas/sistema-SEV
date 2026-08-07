@@ -1,6 +1,6 @@
 /* Shared browser client for the SEV production API. */
 (() => {
-  const API_BASE_URL = 'https://sev-api-7j7b.onrender.com/api/v1';
+  const API_BASE_URL = 'https://api.sevgestaoesistemas.com.br/api/v1';
   const csrfStorageKey = 'sev.csrf.v1';
   let csrfToken = null;
 

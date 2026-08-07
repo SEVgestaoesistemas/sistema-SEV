@@ -21,7 +21,7 @@ Cada chave pertence a uma única empresa. O `organization_id` nunca é recebido 
 ## Endereço base
 
 ```text
-https://sev-api-7j7b.onrender.com/api/v1/integrations/v1
+https://api.sevgestaoesistemas.com.br/api/v1/integrations/v1
 ```
 
 ## Idempotência

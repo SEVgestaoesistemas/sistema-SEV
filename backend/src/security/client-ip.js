@@ -34,6 +34,11 @@ const privateProxyCidrs = [
   'fc00::/7'
 ];
 
+const loopbackProxyCidrs = [
+  '127.0.0.0/8',
+  '::1/128'
+];
+
 const blockListFromCidrs = cidrs => {
   const blockList = new BlockList();
   for (const cidr of cidrs) {
@@ -45,6 +50,7 @@ const blockListFromCidrs = cidrs => {
 
 const cloudflareProxyRanges = blockListFromCidrs(cloudflareCidrs);
 const privateProxyRanges = blockListFromCidrs(privateProxyCidrs);
+const loopbackProxyRanges = blockListFromCidrs(loopbackProxyCidrs);
 
 const normalizeIp = value => {
   if (typeof value !== 'string') return null;
@@ -75,13 +81,17 @@ const lastForwardedIp = request => {
 
 export const isCloudflareProxyIp = value => isInRanges(cloudflareProxyRanges, value);
 
-// Render terminates public HTTP before forwarding to the web service. In that
-// topology, the socket is private and Render appends its immediate public peer
-// to X-Forwarded-For. We use only that final hop, never a client-provided one.
+// Render terminates public HTTP before forwarding to the web service. Depending
+// on the instance network, that internal socket can be private or loopback.
+// Render appends its immediate public peer to X-Forwarded-For; we use only that
+// final hop, never a client-provided one. Loopback is accepted only in production
+// so a local development server cannot trust a forged Cloudflare header.
 export const isTrustedCloudflareRequest = request => {
   const directPeer = socketIp(request);
   if (isCloudflareProxyIp(directPeer)) return true;
-  return isInRanges(privateProxyRanges, directPeer) && isCloudflareProxyIp(lastForwardedIp(request));
+  const renderInternalPeer = isInRanges(privateProxyRanges, directPeer)
+    || (request.server?.config?.environment === 'production' && isInRanges(loopbackProxyRanges, directPeer));
+  return renderInternalPeer && isCloudflareProxyIp(lastForwardedIp(request));
 };
 
 export const getClientIp = request => {

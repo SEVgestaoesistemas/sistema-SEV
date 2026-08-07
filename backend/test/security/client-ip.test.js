@@ -2,9 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { getClientIp, isCloudflareProxyIp, isTrustedCloudflareRequest } from '../../src/security/client-ip.js';
 
-const request = ({ remoteAddress, headers = {} }) => ({
+const request = ({ remoteAddress, headers = {}, environment = 'test' }) => ({
   raw: { socket: { remoteAddress } },
-  headers
+  headers,
+  server: { config: { environment } }
 });
 
 test('usa CF-Connecting-IP quando a conexão vem de uma faixa oficial da Cloudflare', () => {
@@ -21,6 +22,20 @@ test('usa CF-Connecting-IP quando a conexão vem de uma faixa oficial da Cloudfl
 test('aceita CF-Connecting-IP pela cadeia Render privada somente quando o último hop é Cloudflare', () => {
   const incoming = request({
     remoteAddress: '10.12.0.8',
+    headers: {
+      'x-forwarded-for': '198.51.100.24, 173.245.48.12',
+      'cf-connecting-ip': '198.51.100.24'
+    }
+  });
+
+  assert.equal(isTrustedCloudflareRequest(incoming), true);
+  assert.equal(getClientIp(incoming), '198.51.100.24');
+});
+
+test('aceita CF-Connecting-IP pela cadeia Render em loopback somente na produção', () => {
+  const incoming = request({
+    remoteAddress: '127.0.0.1',
+    environment: 'production',
     headers: {
       'x-forwarded-for': '198.51.100.24, 173.245.48.12',
       'cf-connecting-ip': '198.51.100.24'
@@ -55,6 +70,19 @@ test('ignora o spoofing no Render quando o IP direto anexado não pertence à Cl
 
   assert.equal(isTrustedCloudflareRequest(incoming), false);
   assert.equal(getClientIp(incoming), '10.12.0.8');
+});
+
+test('não confia em header forjado no loopback fora de produção', () => {
+  const incoming = request({
+    remoteAddress: '127.0.0.1',
+    headers: {
+      'x-forwarded-for': '198.51.100.24, 173.245.48.12',
+      'cf-connecting-ip': '203.0.113.99'
+    }
+  });
+
+  assert.equal(isTrustedCloudflareRequest(incoming), false);
+  assert.equal(getClientIp(incoming), '127.0.0.1');
 });
 
 test('mantém o IP do socket como fallback no desenvolvimento local', () => {

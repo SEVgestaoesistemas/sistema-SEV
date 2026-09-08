@@ -271,6 +271,18 @@ a{ color: inherit; text-decoration: none; }
   margin-left:auto;
   display:flex; align-items:center; gap:10px;
 }
+.module-switcher{ position:relative; }
+.module-switcher-button{ display:inline-flex; align-items:center; gap:7px; min-height:36px; padding:7px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); color:var(--ink-soft); font:600 12px var(--font-body); cursor:pointer; }
+.module-switcher-button:hover, .module-switcher-button[aria-expanded="true"]{ border-color:var(--brand); background:var(--brand-tint); color:var(--brand-ink); }
+.module-switcher-menu{ position:absolute; z-index:40; top:calc(100% + 8px); right:0; width:270px; overflow:hidden; padding:6px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface); box-shadow:0 18px 40px rgba(18,20,43,.18); }
+.module-switcher-menu[hidden]{ display:none; }
+.module-switcher-option{ display:block; padding:10px; border-radius:var(--radius-sm); color:var(--ink); }
+a.module-switcher-option:hover, .module-switcher-option.is-current{ background:var(--brand-tint); }
+.module-switcher-option strong, .module-switcher-option span, .module-switcher-option small{ display:block; }
+.module-switcher-option strong{ font-size:12px; }
+.module-switcher-option span{ margin-top:3px; color:var(--ink-faint); font-size:10.5px; line-height:1.4; }
+.module-switcher-option small{ margin-top:5px; color:var(--brand); font-size:10px; font-weight:700; }
+.module-switcher-option.is-unavailable{ cursor:default; opacity:.72; }
 .notification-wrap{ position:relative; }
 .icon-btn{
   width:36px; height:36px;
@@ -646,6 +658,13 @@ tbody tr:hover{ background: var(--surface-soft); }
 .platform-support-modal-card{ width:min(100%, 1040px); }
 .platform-support-modal-status{ min-height:18px; margin:0 0 12px; color:var(--ink-faint); font-size:12px; }
 .platform-support-history-table{ min-width:780px; }
+.company-modules-list{ display:flex; flex-direction:column; gap:10px; }
+.company-module-row{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface-soft); }
+.company-module-row strong{ display:block; font-size:13px; }
+.company-module-row p, .platform-empty-modules{ margin:4px 0 0; color:var(--ink-faint); font-size:11.5px; line-height:1.45; }
+.platform-module-toggle{ flex-shrink:0; min-width:98px; min-height:32px; padding:6px 10px; border:1px solid var(--border); border-radius:999px; background:var(--surface); color:var(--ink-soft); font:700 11px var(--font-body); cursor:pointer; }
+.platform-module-toggle:hover{ border-color:var(--brand); color:var(--brand); }
+.platform-module-toggle.is-active{ border-color:color-mix(in srgb, var(--success) 30%, var(--border)); background:var(--success-tint); color:var(--success); }
 
 /* ----------------------------------------------------------- finance page */
 .payment-panel{
@@ -1128,7 +1147,12 @@ tbody tr:hover{ background: var(--surface-soft); }
   .search{ display:none; }
   .kpi-grid{ grid-template-columns: 1fr; }
   .content{ padding: 18px 14px 40px; }
-  .topbar{ padding: 12px 16px; }
+  .topbar{ gap:10px; padding: 12px 14px; }
+  .page-title{ font-size:17px; }
+  .page-sub{ font-size:11px; }
+  .topbar-actions{ gap:7px; }
+  .module-switcher-button{ padding:7px 8px; }
+  .module-switcher-menu{ width:min(270px, calc(100vw - 28px)); }
   .notification-panel{ width:min(360px, calc(100vw - 32px)); }
   .module-hero{ padding:24px 20px; }
   .module-grid{ grid-template-columns:1fr; }
@@ -1170,6 +1194,13 @@ tbody tr:hover{ background: var(--surface-soft); }
   .pending-panel{ padding:20px; }
   .profile-menu{ top:58px; right:12px; width:min(250px, calc(100vw - 24px)); }
   .profile-modal-card{ padding:20px; }
+  .company-module-row{ align-items:flex-start; flex-direction:column; }
+  .platform-module-toggle{ width:100%; }
   .support-widget{ right:14px; bottom:14px; }
   .support-panel{ width:min(360px, calc(100vw - 28px)); }
+}
+@media (max-width: 440px){
+  .page-sub{ display:none; }
+  .module-switcher-button .module-switcher-label{ display:none; }
+  .module-switcher-button::before{ content:'M'; font:700 12px var(--font-body); }
 }

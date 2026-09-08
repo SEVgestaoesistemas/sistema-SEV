@@ -20,7 +20,9 @@ const requiredTables = [
   'organization_api_keys',
   'api_idempotency_keys',
   'api_sync_logs',
-  'api_daily_usage'
+  'api_daily_usage',
+  'modulos',
+  'empresa_modulos'
 ];
 
 const config = loadConfig();

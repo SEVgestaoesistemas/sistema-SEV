@@ -3,6 +3,7 @@ import { AppError } from '../errors.js';
 import { findSession, hashCsrfToken } from './service.js';
 import { sessionCookieName } from '../security/session.js';
 import { authenticateApiKey } from '../integrations/service.js';
+import { isModuleActive } from '../modules/service.js';
 
 export const requireAuth = async request => {
   const session = await findSession(request.server.db, request.cookies[sessionCookieName]);
@@ -31,6 +32,15 @@ export const requireCsrf = async request => {
 export const requireRoles = roles => async request => {
   if (!roles.includes(request.auth.organization.role)) {
     throw new AppError('Você não tem permissão para esta ação.', { statusCode: 403, code: 'FORBIDDEN' });
+  }
+};
+
+export const requireModule = slug => async request => {
+  if (!await isModuleActive(request.tenantDb, slug)) {
+    throw new AppError('Este módulo não está ativo para a sua empresa.', {
+      statusCode: 403,
+      code: 'MODULE_NOT_ACTIVE'
+    });
   }
 };
 

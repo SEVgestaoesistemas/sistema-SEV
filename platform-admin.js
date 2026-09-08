@@ -32,11 +32,18 @@
   const usersModalStatus = document.getElementById('platformUsersModalStatus');
   const usersBody = document.getElementById('platformUsersBody');
   const closeUsersModalButton = document.getElementById('closePlatformUsersModal');
+  const modulesModal = document.getElementById('platformModulesModal');
+  const modulesModalCompany = document.getElementById('platformModulesModalCompany');
+  const modulesModalStatus = document.getElementById('platformModulesModalStatus');
+  const modulesBody = document.getElementById('platformModulesBody');
+  const closeModulesModalButton = document.getElementById('closePlatformModulesModal');
   let companies = [];
   let escalations = [];
   let editingCompanyId = null;
   let managedCompanyId = null;
   let managedUsers = [];
+  let managedModulesCompanyId = null;
+  let managedModules = [];
 
   const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
@@ -178,6 +185,42 @@
       usersBody.innerHTML = '<tr><td class="empty-table" colspan="4">Não foi possível carregar os usuários.</td></tr>';
     }
   };
+  const closeModulesModal = () => {
+    modulesModal.hidden = true;
+    modulesModalStatus.textContent = '';
+    modulesModalStatus.classList.remove('error');
+    managedModulesCompanyId = null;
+    managedModules = [];
+  };
+  const renderModules = () => {
+    modulesBody.innerHTML = managedModules.length ? managedModules.map(module => `
+      <article class="company-module-row">
+        <div><strong>${escapeHtml(module.name)}</strong><p>${escapeHtml(module.description)}</p></div>
+        <button class="platform-module-toggle${module.active ? ' is-active' : ''}" type="button" role="switch" aria-checked="${String(module.active)}" data-toggle-company-module="${module.id}">
+          ${module.active ? 'Ativo' : 'Desativado'}
+        </button>
+      </article>`).join('') : '<p class="platform-empty-modules">Nenhum módulo disponível.</p>';
+  };
+  const openModulesModal = async company => {
+    managedModulesCompanyId = company.id;
+    modulesModalCompany.textContent = company.name;
+    modulesModalStatus.textContent = 'Carregando módulos…';
+    modulesModalStatus.classList.remove('error');
+    modulesBody.innerHTML = '<p class="platform-empty-modules">Carregando…</p>';
+    modulesModal.hidden = false;
+    try {
+      const result = await window.SevApi.getPlatformCompanyModules(company.id);
+      if (managedModulesCompanyId !== company.id) return;
+      modulesModalCompany.textContent = result.company.name;
+      managedModules = result.modules;
+      modulesModalStatus.textContent = 'Ative apenas os módulos contratados pela empresa.';
+      renderModules();
+    } catch (error) {
+      modulesModalStatus.textContent = error.message || 'Não foi possível carregar os módulos.';
+      modulesModalStatus.classList.add('error');
+      modulesBody.innerHTML = '<p class="platform-empty-modules">Não foi possível carregar os módulos.</p>';
+    }
+  };
   const renderEscalations = () => {
     escalationsSummary.textContent = escalations.length
       ? `${escalations.length} encaminhamento${escalations.length === 1 ? '' : 's'} mais recente${escalations.length === 1 ? '' : 's'} para acompanhamento.`
@@ -233,6 +276,7 @@
                 <button type="button" role="menuitem" data-edit-administrator="${company.id}" ${protectedAccount ? 'disabled' : ''}>Editar responsável</button>
                 <button type="button" role="menuitem" data-reset-password="${company.id}" ${protectedAccount ? 'disabled' : ''}>Gerar nova senha</button>
                 <button type="button" role="menuitem" data-manage-users="${company.id}">Gerenciar usuários</button>
+                <button type="button" role="menuitem" data-manage-modules="${company.id}">Gerenciar módulos</button>
                 <button type="button" role="menuitem" data-view-support-history="${company.id}">Ver conversas do suporte</button>
                 <div class="platform-actions-divider" role="separator"></div>
                 <button class="platform-delete-button" type="button" role="menuitem" data-delete-company="${company.id}" ${protectedAccount ? 'disabled' : ''}><span class="platform-menu-trash" aria-hidden="true">🗑</span>Excluir permanentemente</button>
@@ -288,7 +332,7 @@
   body.addEventListener('click', async event => {
     const button = event.target.closest('button');
     if (!button || button.disabled) return;
-    const id = button.dataset.toggleActionsMenu || button.dataset.savePlan || button.dataset.editAdministrator || button.dataset.resetPassword || button.dataset.manageUsers || button.dataset.toggleSuspension || button.dataset.deleteCompany || button.dataset.viewSupportHistory;
+    const id = button.dataset.toggleActionsMenu || button.dataset.savePlan || button.dataset.editAdministrator || button.dataset.resetPassword || button.dataset.manageUsers || button.dataset.manageModules || button.dataset.toggleSuspension || button.dataset.deleteCompany || button.dataset.viewSupportHistory;
     if (!id) return;
     const company = findCompany(id);
     if (!company) return;
@@ -311,6 +355,11 @@
 
     if (button.dataset.manageUsers) {
       openUsersModal(company);
+      return;
+    }
+
+    if (button.dataset.manageModules) {
+      openModulesModal(company);
       return;
     }
 
@@ -462,10 +511,35 @@
       button.textContent = 'Gerar senha temporária';
     }
   });
+  modulesBody.addEventListener('click', async event => {
+    const button = event.target.closest('[data-toggle-company-module]');
+    const moduleId = button?.dataset.toggleCompanyModule;
+    if (!moduleId || !managedModulesCompanyId || button.disabled) return;
+    const module = managedModules.find(item => item.id === moduleId);
+    if (!module) return;
+    const active = !module.active;
+    const action = active ? 'ativar' : 'desativar';
+    if (!window.confirm(`Deseja ${action} o módulo ${module.name} para esta empresa?`)) return;
+    button.disabled = true;
+    modulesModalStatus.textContent = `${active ? 'Ativando' : 'Desativando'} módulo…`;
+    modulesModalStatus.classList.remove('error');
+    try {
+      const result = await window.SevApi.setPlatformCompanyModuleStatus(managedModulesCompanyId, moduleId, active);
+      managedModules = managedModules.map(item => item.id === moduleId ? result.module : item);
+      modulesModalStatus.textContent = `${result.module.name} ${result.module.active ? 'ativado' : 'desativado'} para esta empresa.`;
+      renderModules();
+    } catch (error) {
+      modulesModalStatus.textContent = error.message || 'Não foi possível atualizar o módulo.';
+      modulesModalStatus.classList.add('error');
+      button.disabled = false;
+    }
+  });
   closeAdministratorModalButton.addEventListener('click', closeAdministratorModal);
   administratorModal.addEventListener('click', event => { if (event.target === administratorModal) closeAdministratorModal(); });
   closeUsersModalButton.addEventListener('click', closeUsersModal);
   usersModal.addEventListener('click', event => { if (event.target === usersModal) closeUsersModal(); });
+  closeModulesModalButton.addEventListener('click', closeModulesModal);
+  modulesModal.addEventListener('click', event => { if (event.target === modulesModal) closeModulesModal(); });
   closeSupportModalButton.addEventListener('click', closeSupportModal);
   supportModal.addEventListener('click', event => { if (event.target === supportModal) closeSupportModal(); });
   document.addEventListener('click', event => {
@@ -475,6 +549,7 @@
     if (event.key === 'Escape') {
       closeAdministratorModal();
       closeUsersModal();
+      closeModulesModal();
       closeSupportModal();
       closeActionMenus();
     }

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { requireAuth, requireCsrf, requirePlatformAdmin } from '../auth/middleware.js';
+import { listCompanyModules, setCompanyModuleStatus } from '../modules/service.js';
 import {
   bootstrapPlatformAdministrator,
   createCompany,
@@ -31,6 +32,8 @@ const administratorSchema = z.object({
 });
 const deletionSchema = z.object({ confirmationName: z.string().trim().min(2).max(100) });
 const companyIdSchema = z.object({ id: z.string().uuid() });
+const companyModuleSchema = z.object({ id: z.string().uuid(), moduleId: z.string().uuid() });
+const moduleStatusSchema = z.object({ active: z.boolean() });
 const companyUserSchema = z.object({ companyId: z.string().uuid(), userId: z.string().uuid() });
 const bootstrapSchema = z.object({ email: emailSchema, token: z.string().min(24).max(256) });
 
@@ -59,6 +62,21 @@ export const registerPlatformRoutes = async app => {
   }, async request => {
     const { id } = validate(companyIdSchema, request.params);
     return listCompanyUsers(app.db, id);
+  });
+
+  app.get('/platform/companies/:id/modules', {
+    preHandler: [requireAuth, requirePlatformAdmin]
+  }, async request => {
+    const { id } = validate(companyIdSchema, request.params);
+    return listCompanyModules(app.db, id);
+  });
+
+  app.patch('/platform/companies/:id/modules/:moduleId', {
+    preHandler: [requireAuth, requireCsrf, requirePlatformAdmin]
+  }, async request => {
+    const { id, moduleId } = validate(companyModuleSchema, request.params);
+    const { active } = validate(moduleStatusSchema, request.body);
+    return setCompanyModuleStatus(app.db, id, moduleId, active, request.auth);
   });
 
   app.get('/platform/support/escalations', {

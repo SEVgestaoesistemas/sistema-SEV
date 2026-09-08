@@ -212,6 +212,11 @@
       body: payload
     })).administrator,
     getPlatformCompanies: async () => (await request('/platform/companies')).companies,
+    getPlatformCompanyModules: id => request(`/platform/companies/${encodeURIComponent(id)}/modules`),
+    setPlatformCompanyModuleStatus: async (companyId, moduleId, active) => request(
+      `/platform/companies/${encodeURIComponent(companyId)}/modules/${encodeURIComponent(moduleId)}`,
+      { method: 'PATCH', body: { active }, csrf: true }
+    ),
     getPlatformCompanyUsers: id => request(`/platform/companies/${encodeURIComponent(id)}/users`),
     createPlatformCompany: async company => request('/platform/companies', {
       method: 'POST',
@@ -249,6 +254,7 @@
     getPlatformCompanySupportConversations: async id => request(`/platform/companies/${encodeURIComponent(id)}/support/conversations`),
     getPlatformSupportEscalations: async () => (await request('/platform/support/escalations')).escalations,
     getSettings: async () => (await request('/settings')).settings,
+    getCompanyModules: async () => (await request('/empresa/modulos')).modules,
     updateSettings: async settings => (await request('/settings', {
       method: 'PATCH',
       body: settings,

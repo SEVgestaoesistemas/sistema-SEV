@@ -276,6 +276,13 @@
             <div class="table-wrap"><table class="platform-support-history-table"><thead><tr><th>Usuário</th><th>Função</th><th>Situação</th><th>Ação</th></tr></thead><tbody id="platformUsersBody"></tbody></table></div>
           </div>
         </div>
+        <div class="profile-modal" id="platformModulesModal" role="dialog" aria-modal="true" aria-labelledby="platformModulesModalTitle" hidden>
+          <div class="profile-modal-card">
+            <div class="profile-modal-head"><div><h2 id="platformModulesModalTitle">Módulos contratados</h2><p id="platformModulesModalCompany"></p></div><button class="modal-close" id="closePlatformModulesModal" type="button" aria-label="Fechar">×</button></div>
+            <p class="platform-support-modal-status" id="platformModulesModalStatus" role="status" aria-live="polite"></p>
+            <div class="company-modules-list" id="platformModulesBody"></div>
+          </div>
+        </div>
         <div class="profile-modal" id="platformSupportModal" role="dialog" aria-modal="true" aria-labelledby="platformSupportModalTitle" hidden>
           <div class="profile-modal-card platform-support-modal-card">
             <div class="profile-modal-head"><div><h2 id="platformSupportModalTitle">Histórico do suporte com IA</h2><p id="platformSupportModalCompany"></p></div><button class="modal-close" id="closePlatformSupportModal" type="button" aria-label="Fechar">×</button></div>
@@ -289,6 +296,7 @@
   const pageId = document.body.dataset.page;
   const page = pages[pageId];
   if (!page) return;
+  const currentModule = document.body.dataset.module || 'gestao';
 
   const navigation = [
     ['index.html', 'Painel', 'painel'],
@@ -301,14 +309,19 @@
   ];
 
   const navLink = ([href, label, id]) => `<a class="nav-item${id === pageId ? ' active' : ''}" href="${href}"${id === pageId ? ' aria-current="page"' : ''}>${label}</a>`;
+  const moduleMetadata = {
+    gestao: { label: 'Gestão', description: 'Estoque, vendas, financeiro e equipe', href: 'index.html' },
+    crm: { label: 'CRM', description: 'Negociações e relacionamento', href: null },
+    avaliacoes: { label: 'Avaliações', description: 'Treinamentos e avaliações', href: null }
+  };
 
   root.innerHTML = `
     <div class="sidebar-overlay" id="overlay"></div>
     <div class="app">
       <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
         <div class="brand"><img class="brand-logo" src="assets/sev-logo.jpeg" alt="SEV Gestão &amp; Sistemas"></div>
-        <div class="nav-label">Geral</div><nav class="nav">${navigation.slice(0, 5).map(navLink).join('')}</nav>
-        <div class="nav-label">Sistema</div><nav class="nav">${navigation.slice(5).map(navLink).join('')}</nav>
+        <div class="nav-label" id="primaryNavigationLabel" hidden>Gestão</div><nav class="nav" id="primaryNavigation" hidden></nav>
+        <div class="nav-label" id="secondaryNavigationLabel" hidden>Sistema</div><nav class="nav" id="secondaryNavigation" hidden></nav>
         <button class="sidebar-footer sidebar-profile" type="button" data-profile-trigger aria-label="Abrir menu do perfil"><div class="avatar-sm" data-profile-avatar>JM</div><div><div class="who" data-profile-name>João Marcos</div><div class="role" data-profile-role>Administrador</div></div></button>
       </aside>
       <div class="main">
@@ -316,6 +329,12 @@
           <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menu" aria-controls="sidebar" aria-expanded="false">☰</button>
           <div><div class="page-title">${page.title}</div><div class="page-sub">${page.subtitle}</div></div>
           <div class="topbar-actions">
+            <div class="module-switcher" id="moduleSwitcher" hidden>
+              <button class="module-switcher-button" id="moduleSwitcherButton" type="button" aria-haspopup="menu" aria-controls="moduleSwitcherMenu" aria-expanded="false">
+                <span class="module-switcher-label">Módulos</span><span aria-hidden="true">⌄</span>
+              </button>
+              <div class="module-switcher-menu" id="moduleSwitcherMenu" role="menu" hidden></div>
+            </div>
             <div class="notification-wrap">
               <button class="icon-btn" id="notificationButton" type="button" aria-label="Notificações" aria-haspopup="dialog" aria-controls="notificationPanel" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z"/><path d="M10 21h4"/></svg><span class="dot" id="notificationDot"></span></button>
               <section class="notification-panel" id="notificationPanel" aria-label="Notificações" hidden><div class="notification-head"><div><strong>Notificações</strong><span id="notificationSummary"></span></div><button class="text-button" id="markNotificationsRead" type="button">Marcar todas como lidas</button></div><ul class="notification-list" id="notificationList"></ul></section>
@@ -326,6 +345,67 @@
         <main class="content module-content">${page.content}</main>
       </div>
     </div>`;
+
+  const primaryNavigationLabel = document.getElementById('primaryNavigationLabel');
+  const primaryNavigation = document.getElementById('primaryNavigation');
+  const secondaryNavigationLabel = document.getElementById('secondaryNavigationLabel');
+  const secondaryNavigation = document.getElementById('secondaryNavigation');
+  const moduleSwitcher = document.getElementById('moduleSwitcher');
+  const moduleSwitcherButton = document.getElementById('moduleSwitcherButton');
+  const moduleSwitcherMenu = document.getElementById('moduleSwitcherMenu');
+  const closeModuleSwitcher = () => {
+    moduleSwitcherMenu.hidden = true;
+    moduleSwitcherButton.setAttribute('aria-expanded', 'false');
+  };
+  const renderModuleNavigation = modules => {
+    const activeModules = modules.filter(module => module.active);
+    const selected = activeModules.find(module => module.slug === currentModule) || activeModules[0];
+    const selectedMetadata = moduleMetadata[selected?.slug];
+
+    primaryNavigation.innerHTML = selected?.slug === 'gestao'
+      ? navigation.slice(0, 5).map(navLink).join('')
+      : '';
+    secondaryNavigation.innerHTML = selected?.slug === 'gestao'
+      ? navigation.slice(5).map(navLink).join('')
+      : '';
+    primaryNavigation.hidden = !primaryNavigation.innerHTML;
+    primaryNavigationLabel.hidden = !primaryNavigation.innerHTML;
+    secondaryNavigation.hidden = !secondaryNavigation.innerHTML;
+    secondaryNavigationLabel.hidden = !secondaryNavigation.innerHTML;
+
+    if (!activeModules.length) return;
+    moduleSwitcher.hidden = false;
+    moduleSwitcherButton.querySelector('.module-switcher-label').textContent = selectedMetadata?.label || 'Módulos';
+    moduleSwitcherMenu.innerHTML = activeModules.map(module => {
+      const metadata = moduleMetadata[module.slug] || { label: module.name, description: module.description, href: null };
+      const active = module.slug === currentModule ? ' is-current' : '';
+      const unavailable = !metadata.href ? '<small>Em breve</small>' : '';
+      const content = `<strong>${metadata.label}</strong><span>${metadata.description}</span>${unavailable}`;
+      return metadata.href
+        ? `<a class="module-switcher-option${active}" role="menuitem" href="${metadata.href}">${content}</a>`
+        : `<div class="module-switcher-option is-unavailable${active}" role="menuitem" aria-disabled="true">${content}</div>`;
+    }).join('');
+  };
+
+  moduleSwitcherButton.addEventListener('click', () => {
+    const willOpen = moduleSwitcherMenu.hidden;
+    moduleSwitcherMenu.hidden = !willOpen;
+    moduleSwitcherButton.setAttribute('aria-expanded', String(willOpen));
+  });
+  document.addEventListener('click', event => {
+    if (!event.target.closest('#moduleSwitcher')) closeModuleSwitcher();
+  });
+  window.SevAuth?.ready?.then(user => {
+    if (!user) return;
+    return window.SevApi.getCompanyModules().then(renderModuleNavigation).catch(() => {
+      primaryNavigation.innerHTML = navigation.slice(0, 5).map(navLink).join('');
+      secondaryNavigation.innerHTML = navigation.slice(5).map(navLink).join('');
+      primaryNavigation.hidden = false;
+      primaryNavigationLabel.hidden = false;
+      secondaryNavigation.hidden = false;
+      secondaryNavigationLabel.hidden = false;
+    });
+  });
 
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('overlay');
@@ -344,7 +424,10 @@
   });
   overlay.addEventListener('click', closeMenu);
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape') closeMenu();
+    if (event.key === 'Escape') {
+      closeMenu();
+      closeModuleSwitcher();
+    }
   });
 
   if (pageId === 'configuracoes') {

@@ -179,6 +179,13 @@
           <div class="table-wrap"><table class="team-table"><thead><tr><th>Integrante</th><th>Função</th><th>Status</th><th>Ações</th></tr></thead><tbody id="teamTableBody"></tbody></table></div>
         </section>`
     },
+    avaliacoes: {
+      title: 'Avaliações',
+      subtitle: 'Treinamentos e acompanhamento da equipe',
+      content: `
+        <section class="module-hero"><p class="eyebrow">Treinamento</p><h1>Avaliações</h1><p>Crie treinamentos, responda questionários e acompanhe a evolução da equipe.</p></section>
+        <section id="evaluationsApp" class="evaluations-app" aria-live="polite"><p class="module-loading">Carregando avaliações…</p></section>`
+    },
     configuracoes: {
       title: 'Configurações',
       subtitle: 'Preferências gerais do sistema',
@@ -312,7 +319,7 @@
   const moduleMetadata = {
     gestao: { label: 'Gestão', description: 'Estoque, vendas, financeiro e equipe', href: 'index.html' },
     crm: { label: 'CRM', description: 'Negociações e relacionamento', href: null },
-    avaliacoes: { label: 'Avaliações', description: 'Treinamentos e avaliações', href: null }
+    avaliacoes: { label: 'Avaliações', description: 'Treinamentos e avaliações', href: 'avaliacoes.html' }
   };
 
   root.innerHTML = `
@@ -362,9 +369,14 @@
     const selected = activeModules.find(module => module.slug === currentModule) || activeModules[0];
     const selectedMetadata = moduleMetadata[selected?.slug];
 
+    if (currentModule !== 'gestao' && !activeModules.some(module => module.slug === currentModule)) {
+      if (selectedMetadata?.href) window.location.replace(selectedMetadata.href);
+      return;
+    }
+
     primaryNavigation.innerHTML = selected?.slug === 'gestao'
       ? navigation.slice(0, 5).map(navLink).join('')
-      : '';
+      : selected?.slug === 'avaliacoes' ? '<a class="nav-item active" href="avaliacoes.html" aria-current="page">Avaliações</a>' : '';
     secondaryNavigation.innerHTML = selected?.slug === 'gestao'
       ? navigation.slice(5).map(navLink).join('')
       : '';

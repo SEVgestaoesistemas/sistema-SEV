@@ -22,7 +22,11 @@ const requiredTables = [
   'api_sync_logs',
   'api_daily_usage',
   'modulos',
-  'empresa_modulos'
+  'empresa_modulos',
+  'avaliacoes',
+  'avaliacao_questoes',
+  'avaliacao_opcoes',
+  'avaliacao_tentativas'
 ];
 
 const config = loadConfig();

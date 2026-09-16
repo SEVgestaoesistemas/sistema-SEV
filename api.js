@@ -255,6 +255,20 @@
     getPlatformSupportEscalations: async () => (await request('/platform/support/escalations')).escalations,
     getSettings: async () => (await request('/settings')).settings,
     getCompanyModules: async () => (await request('/empresa/modulos')).modules,
+    getEvaluations: async () => (await request('/avaliacoes')).evaluations,
+    createEvaluation: async evaluation => (await request('/avaliacoes', {
+      method: 'POST', body: evaluation, csrf: true
+    })).evaluation,
+    updateEvaluation: async (id, evaluation) => (await request(`/avaliacoes/${encodeURIComponent(id)}`, {
+      method: 'PATCH', body: evaluation, csrf: true
+    })).evaluation,
+    deleteEvaluation: id => request(`/avaliacoes/${encodeURIComponent(id)}`, {
+      method: 'DELETE', csrf: true
+    }),
+    submitEvaluationAttempt: async (id, respostas) => request(`/avaliacoes/${encodeURIComponent(id)}/tentativas`, {
+      method: 'POST', body: { respostas }, csrf: true
+    }),
+    getEvaluationAttempts: async id => (await request(`/avaliacoes/${encodeURIComponent(id)}/tentativas`)).attempts,
     updateSettings: async settings => (await request('/settings', {
       method: 'PATCH',
       body: settings,

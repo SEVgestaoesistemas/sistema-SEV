@@ -186,6 +186,13 @@
         <section class="module-hero"><p class="eyebrow">Treinamento</p><h1>Avaliações</h1><p>Crie treinamentos, responda questionários e acompanhe a evolução da equipe.</p></section>
         <section id="evaluationsApp" class="evaluations-app" aria-live="polite"><p class="module-loading">Carregando avaliações…</p></section>`
     },
+    crm: {
+      title: 'CRM',
+      subtitle: 'Negociações, tarefas e propostas comerciais',
+      content: `
+        <section class="module-hero"><p class="eyebrow">Relacionamento comercial</p><h1>CRM</h1><p>Organize oportunidades em um funil e acompanhe todas as próximas ações.</p></section>
+        <section id="crmApp" class="crm-app" aria-live="polite"><p class="module-loading">Carregando negociações…</p></section>`
+    },
     configuracoes: {
       title: 'Configurações',
       subtitle: 'Preferências gerais do sistema',
@@ -318,7 +325,7 @@
   const navLink = ([href, label, id]) => `<a class="nav-item${id === pageId ? ' active' : ''}" href="${href}"${id === pageId ? ' aria-current="page"' : ''}>${label}</a>`;
   const moduleMetadata = {
     gestao: { label: 'Gestão', description: 'Estoque, vendas, financeiro e equipe', href: 'index.html' },
-    crm: { label: 'CRM', description: 'Negociações e relacionamento', href: null },
+    crm: { label: 'CRM', description: 'Negociações e relacionamento', href: 'crm.html' },
     avaliacoes: { label: 'Avaliações', description: 'Treinamentos e avaliações', href: 'avaliacoes.html' }
   };
 
@@ -376,7 +383,8 @@
 
     primaryNavigation.innerHTML = selected?.slug === 'gestao'
       ? navigation.slice(0, 5).map(navLink).join('')
-      : selected?.slug === 'avaliacoes' ? '<a class="nav-item active" href="avaliacoes.html" aria-current="page">Avaliações</a>' : '';
+      : selected?.slug === 'avaliacoes' ? '<a class="nav-item active" href="avaliacoes.html" aria-current="page">Avaliações</a>'
+      : selected?.slug === 'crm' ? '<a class="nav-item active" href="crm.html" aria-current="page">Negociações</a>' : '';
     secondaryNavigation.innerHTML = selected?.slug === 'gestao'
       ? navigation.slice(5).map(navLink).join('')
       : '';

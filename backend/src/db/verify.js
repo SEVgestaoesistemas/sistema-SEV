@@ -26,7 +26,12 @@ const requiredTables = [
   'avaliacoes',
   'avaliacao_questoes',
   'avaliacao_opcoes',
-  'avaliacao_tentativas'
+  'avaliacao_tentativas',
+  'crm_etapas',
+  'crm_negociacoes',
+  'crm_tarefas',
+  'crm_historico',
+  'crm_propostas_itens'
 ];
 
 const config = loadConfig();

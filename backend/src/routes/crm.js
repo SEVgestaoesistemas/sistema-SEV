@@ -62,7 +62,7 @@ const assertNegotiation = async (db, organizationId, id, lock = false) => {
        FROM crm_negociacoes n
        JOIN crm_etapas stage ON stage.id = n.etapa_id AND stage.organization_id = n.organization_id
        LEFT JOIN users user_account ON user_account.id = n.responsavel_id
-      WHERE n.id = $1 AND n.organization_id = $2 ${lock ? 'FOR UPDATE' : ''}`, [id, organizationId]
+      WHERE n.id = $1 AND n.organization_id = $2 ${lock ? 'FOR UPDATE OF n' : ''}`, [id, organizationId]
   );
   if (!result.rowCount) throw new AppError('Negociação não encontrada.', { statusCode: 404, code: 'CRM_NEGOTIATION_NOT_FOUND' });
   return result.rows[0];

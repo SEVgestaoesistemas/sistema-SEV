@@ -179,13 +179,6 @@
           <div class="table-wrap"><table class="team-table"><thead><tr><th>Integrante</th><th>Função</th><th>Status</th><th>Ações</th></tr></thead><tbody id="teamTableBody"></tbody></table></div>
         </section>`
     },
-    avaliacoes: {
-      title: 'Avaliações',
-      subtitle: 'Treinamentos e acompanhamento da equipe',
-      content: `
-        <section class="module-hero"><p class="eyebrow">Treinamento</p><h1>Avaliações</h1><p>Crie treinamentos, responda questionários e acompanhe a evolução da equipe.</p></section>
-        <section id="evaluationsApp" class="evaluations-app" aria-live="polite"><p class="module-loading">Carregando avaliações…</p></section>`
-    },
     crm: {
       title: 'CRM',
       subtitle: 'Negociações, tarefas e propostas comerciais',
@@ -325,8 +318,7 @@
   const navLink = ([href, label, id]) => `<a class="nav-item${id === pageId ? ' active' : ''}" href="${href}"${id === pageId ? ' aria-current="page"' : ''}>${label}</a>`;
   const moduleMetadata = {
     gestao: { label: 'Gestão', description: 'Estoque, vendas, financeiro e equipe', href: 'index.html' },
-    crm: { label: 'CRM', description: 'Negociações e relacionamento', href: 'crm.html' },
-    avaliacoes: { label: 'Avaliações', description: 'Treinamentos e avaliações', href: 'avaliacoes.html' }
+    crm: { label: 'CRM', description: 'Negociações e relacionamento', href: 'crm.html' }
   };
 
   root.innerHTML = `
@@ -383,7 +375,6 @@
 
     primaryNavigation.innerHTML = selected?.slug === 'gestao'
       ? navigation.slice(0, 5).map(navLink).join('')
-      : selected?.slug === 'avaliacoes' ? '<a class="nav-item active" href="avaliacoes.html" aria-current="page">Avaliações</a>'
       : selected?.slug === 'crm' ? '<a class="nav-item active" href="crm.html" aria-current="page">Negociações</a>' : '';
     secondaryNavigation.innerHTML = selected?.slug === 'gestao'
       ? navigation.slice(5).map(navLink).join('')

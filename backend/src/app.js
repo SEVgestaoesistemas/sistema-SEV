@@ -22,7 +22,6 @@ import { registerReportRoutes } from './routes/reports.js';
 import { registerSupportRoutes } from './routes/support.js';
 import { registerIntegrationRoutes } from './routes/integrations.js';
 import { registerModuleRoutes } from './routes/modules.js';
-import { registerEvaluationRoutes } from './routes/evaluations.js';
 import { registerCrmRoutes } from './routes/crm.js';
 import { createGeminiChat } from './support/gemini.js';
 import { getClientIp, isTrustedInfrastructureProxyIp } from './security/client-ip.js';
@@ -131,7 +130,6 @@ export const buildApp = async (options = {}) => {
   await app.register(registerProfileRoutes, { prefix: '/api/v1' });
   await app.register(registerSettingsRoutes, { prefix: '/api/v1' });
   await app.register(registerModuleRoutes, { prefix: '/api/v1' });
-  await app.register(registerEvaluationRoutes, { prefix: '/api/v1' });
   await app.register(registerCrmRoutes, { prefix: '/api/v1' });
   await app.register(registerTeamRoutes, { prefix: '/api/v1' });
   await app.register(registerNotificationRoutes, { prefix: '/api/v1' });

@@ -255,20 +255,6 @@
     getPlatformSupportEscalations: async () => (await request('/platform/support/escalations')).escalations,
     getSettings: async () => (await request('/settings')).settings,
     getCompanyModules: async () => (await request('/empresa/modulos')).modules,
-    getEvaluations: async () => (await request('/avaliacoes')).evaluations,
-    createEvaluation: async evaluation => (await request('/avaliacoes', {
-      method: 'POST', body: evaluation, csrf: true
-    })).evaluation,
-    updateEvaluation: async (id, evaluation) => (await request(`/avaliacoes/${encodeURIComponent(id)}`, {
-      method: 'PATCH', body: evaluation, csrf: true
-    })).evaluation,
-    deleteEvaluation: id => request(`/avaliacoes/${encodeURIComponent(id)}`, {
-      method: 'DELETE', csrf: true
-    }),
-    submitEvaluationAttempt: async (id, respostas) => request(`/avaliacoes/${encodeURIComponent(id)}/tentativas`, {
-      method: 'POST', body: { respostas }, csrf: true
-    }),
-    getEvaluationAttempts: async id => (await request(`/avaliacoes/${encodeURIComponent(id)}/tentativas`)).attempts,
     getCrmStages: async () => (await request('/crm/etapas')).stages,
     createCrmStage: async stage => (await request('/crm/etapas', { method: 'POST', body: stage, csrf: true })).stage,
     updateCrmStage: async (id, stage) => (await request(`/crm/etapas/${encodeURIComponent(id)}`, { method: 'PATCH', body: stage, csrf: true })).stage,

@@ -84,7 +84,7 @@ test('módulos contratados são isolados por empresa, exigem administração da 
     });
     assert.equal(catalog.statusCode, 200);
     assert.deepEqual(catalog.json().modules.map(module => [module.slug, module.active]), [
-      ['gestao', true], ['crm', false], ['avaliacoes', false]
+      ['gestao', true], ['crm', false]
     ]);
     const crm = catalog.json().modules.find(module => module.slug === 'crm');
 
@@ -141,7 +141,7 @@ test('módulos contratados são isolados por empresa, exigem administração da 
       [organizationC]
     );
     assert.deepEqual(defaultModules.rows.map(row => [row.slug, row.ativo]), [
-      ['gestao', true], ['crm', false], ['avaliacoes', false]
+      ['gestao', true], ['crm', false]
     ]);
   } finally {
     if (fixture) {
